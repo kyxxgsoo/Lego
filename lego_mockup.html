@@ -164,11 +164,33 @@
             overflow: hidden;
             text-overflow: ellipsis;
             min-height: 20px;
+            z-index: 1;
         }
         .task:hover {
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 1000 !important;
             overflow: visible;
+        }
+        .task-content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+        
+        /* 중간 시간대 호버 영역 */
+        .task-hover-area {
+            pointer-events: auto;
+        }
+        .task-hover-area:hover {
+            z-index: 1000 !important;
+        }
+        /* JavaScript로 제어되는 강제 툴팁 표시 */
+        .task-detail-tooltip.force-show {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 10000 !important;
         }
         
         /* 일정 블록 툴팁 */
@@ -192,8 +214,9 @@
             white-space: normal;
             pointer-events: none;
         }
-        .task:hover .task-detail-tooltip { 
-            display: block; 
+        .task:hover .task-detail-tooltip,
+        .task .task-detail-tooltip.force-show { 
+            display: block !important;
         }
         .task-detail-tooltip::after {
             content: '';
@@ -328,20 +351,23 @@
         // 
         // ⚠️ 중요: 일정 데이터를 수정하려면 아래 영역만 수정하세요!
         // 
-        // 1. SCHEDULE_DATA 객체에 날짜별 일정을 추가/수정/삭제하면
-        //    월별, 주별, 일별 뷰에 자동으로 반영됩니다.
+        // 1. TASKS: 프로젝트의 테스크 정의 (대/중/소분류, 기준 시간)
+        // 2. TASK_ASSIGNMENTS: 테스크별 실제 배정 스케줄
         // 
-        // 2. 날짜 형식: 'YYYY-MM-DD' (예: '2023-03-01')
+        // 테스크 형식:
+        //    taskId: 고유 ID
+        //    title: 테스크 제목
+        //    category: 소분류 (planning/development/design)
+        //    totalHours: 기준 시간 (해당 테스크를 완료하는데 필요한 총 시간)
         // 
-        // 3. 일정 항목 형식:
-        //    {
-        //      user: 'user-kim',           // 사용자 ID
-        //      category: 'planning',       // 업무 카테고리 (planning/development/design)
-        //      title: '요구사항 정리',      // 업무 제목
-        //      startTime: '10:00',         // 시작 시간
-        //      endTime: '12:00',           // 종료 시간
-        //      note: '선택사항'             // 추가 메모 (선택사항)
-        //    }
+        // 스케줄 형식:
+        //    taskId: 테스크 ID (TASKS의 taskId와 매칭)
+        //    user: 담당자 ID
+        //    startDate: 시작 날짜 'YYYY-MM-DD'
+        //    endDate: 종료 날짜 'YYYY-MM-DD' (하루만이면 startDate와 동일)
+        //    startTime: 시작 시간 'HH:MM'
+        //    endTime: 종료 시간 'HH:MM'
+        //    note: 추가 메모 (선택사항)
         // 
         // ============================================
         
@@ -353,165 +379,192 @@
             'user-haha': { name: '하하', team: 'design' }
         };
         
-        // 업무 카테고리 (색상)
+        // 업무 카테고리 (소분류) - 색상 기준
         const CATEGORIES = {
             'planning': { name: '기획', color: 'blue', colorCode: '#3b82f6' },
             'development': { name: '개발', color: 'green', colorCode: '#22c55e' },
             'design': { name: '디자인', color: 'yellow', colorCode: '#eab308' }
         };
         
-        // 📅 일정 데이터 (2023년 2월~4월)
-        const SCHEDULE_DATA = {
-            '2023-02-27': [
-                { user: 'user-kim', category: 'planning', title: '요구사항 분석', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-kim', category: 'development', title: '데이터 모델 설계', startTime: '14:00', endTime: '16:00' },
-                { user: 'user-lee', category: 'development', title: 'API 구현', startTime: '12:00', endTime: '14:00' }
-            ],
-            '2023-02-28': [
-                { user: 'user-kim', category: 'planning', title: '프로젝트 킥오프', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-kim', category: 'development', title: '환경 설정', startTime: '12:00', endTime: '13:00' }
-            ],
-            '2023-03-01': [
-                { user: 'user-kim', category: 'planning', title: '요구사항 정리', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-park', category: 'design', title: '스타일 가이드', startTime: '12:00', endTime: '14:00' }
-            ],
-            '2023-03-02': [
-                { user: 'user-kim', category: 'planning', title: '화면 설계', startTime: '10:00', endTime: '12:00' }
-            ],
-            '2023-03-03': [
-                { user: 'user-kim', category: 'planning', title: '프로젝트 기획서 작성', startTime: '10:00', endTime: '11:00' },
-                { user: 'user-kim', category: 'design', title: '와이어프레임 검토', startTime: '11:00', endTime: '12:00' },
-                { user: 'user-lee', category: 'development', title: 'API 연동 작업', startTime: '13:00', endTime: '15:00', note: '외부 데이터 연동' },
-                { user: 'user-park', category: 'design', title: '아이콘 제작', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-03-06': [
-                { user: 'user-lee', category: 'development', title: 'API 개발', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-lee', category: 'planning', title: '기술 문서 작성', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-03-07': [
-                { user: 'user-lee', category: 'development', title: '백엔드 개발', startTime: '10:00', endTime: '15:00' }
-            ],
-            '2023-03-08': [
-                { user: 'user-lee', category: 'development', title: '데이터베이스 설계', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-lee', category: 'design', title: 'UI 리뷰', startTime: '14:00', endTime: '15:00' },
-                { user: 'user-park', category: 'design', title: 'UI 컴포넌트', startTime: '10:00', endTime: '13:00' }
-            ],
-            '2023-03-09': [
-                { user: 'user-lee', category: 'development', title: 'API 테스트', startTime: '10:00', endTime: '14:00' }
-            ],
-            '2023-03-10': [
-                { user: 'user-park', category: 'design', title: 'UI 컴포넌트 디자인', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-park', category: 'planning', title: '사용자 시나리오 작성', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-03-13': [
-                { user: 'user-lee', category: 'development', title: '코드 리뷰', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-lee', category: 'design', title: 'UX 개선', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-03-14': [
-                { user: 'user-park', category: 'design', title: '반응형 디자인', startTime: '10:00', endTime: '15:00' }
-            ],
-            '2023-03-15': [
-                { user: 'user-kim', category: 'planning', title: '스펙 검토', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-park', category: 'design', title: '디자인 시스템', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-park', category: 'development', title: '프론트엔드 협업', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-03-17': [
-                { user: 'user-kim', category: 'planning', title: '스펙 문서 작성', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-kim', category: 'development', title: '프론트엔드 구현', startTime: '13:00', endTime: '16:00' },
-                { user: 'user-lee', category: 'development', title: '백엔드 API 개발', startTime: '10:00', endTime: '15:00' },
-                { user: 'user-park', category: 'design', title: '반응형 레이아웃', startTime: '13:00', endTime: '16:00' }
-            ],
-            '2023-03-20': [
-                { user: 'user-lee', category: 'development', title: '서버 배포', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-lee', category: 'planning', title: '배포 계획 수립', startTime: '14:00', endTime: '16:00' },
-                { user: 'user-park', category: 'design', title: '최종 디자인', startTime: '10:00', endTime: '13:00' }
-            ],
-            '2023-03-21': [
-                { user: 'user-kim', category: 'development', title: '코드 통합', startTime: '10:00', endTime: '15:00' }
-            ],
-            '2023-03-22': [
-                { user: 'user-kim', category: 'planning', title: '중간 점검', startTime: '10:00', endTime: '12:00' }
-            ],
-            '2023-03-23': [
-                { user: 'user-kim', category: 'development', title: '버그 수정', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-kim', category: 'planning', title: '진행 상황 보고', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-03-24': [
-                { user: 'user-lee', category: 'development', title: '성능 최적화', startTime: '10:00', endTime: '15:00' }
-            ],
-            '2023-03-27': [
-                { user: 'user-kim', category: 'planning', title: '최종 점검', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-park', category: 'design', title: '디자인 QA', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-park', category: 'development', title: '프론트 마무리', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-03-28': [
-                { user: 'user-park', category: 'design', title: '최종 산출물', startTime: '10:00', endTime: '13:00' }
-            ],
-            '2023-03-29': [
-                { user: 'user-lee', category: 'development', title: '최종 테스트', startTime: '10:00', endTime: '15:00' },
-                { user: 'user-park', category: 'design', title: '디자인 정리', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-haha', category: 'planning', title: '문서 작성', startTime: '10:00', endTime: '12:00' }
-            ],
-            '2023-03-30': [
-                { user: 'user-lee', category: 'development', title: '배포 준비', startTime: '10:00', endTime: '15:00' }
-            ],
-            '2023-03-31': [
-                { user: 'user-kim', category: 'planning', title: '최종 검토 및 승인', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-kim', category: 'design', title: '디자인 QA', startTime: '14:00', endTime: '16:00' },
-                { user: 'user-lee', category: 'development', title: '최종 배포 준비', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-lee', category: 'planning', title: '릴리즈 노트 작성', startTime: '14:00', endTime: '16:00' },
-                { user: 'user-park', category: 'design', title: '최종 산출물 정리', startTime: '10:00', endTime: '15:00' }
-            ],
-            // 2023년 4월 데이터
-            '2023-04-03': [
-                { user: 'user-kim', category: 'planning', title: '프로젝트 회고', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-lee', category: 'development', title: '시스템 모니터링', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-04-04': [
-                { user: 'user-park', category: 'design', title: '디자인 시스템 정리', startTime: '10:00', endTime: '15:00' },
-                { user: 'user-haha', category: 'planning', title: '문서화 작업', startTime: '13:00', endTime: '17:00' }
-            ],
-            '2023-04-05': [
-                { user: 'user-kim', category: 'planning', title: 'Q2 계획 수립', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-lee', category: 'development', title: '성능 개선', startTime: '13:00', endTime: '16:00' }
-            ],
-            '2023-04-10': [
-                { user: 'user-kim', category: 'planning', title: '신규 프로젝트 기획', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-park', category: 'design', title: 'UI 컨셉 스케치', startTime: '13:00', endTime: '17:00' }
-            ],
-            '2023-04-11': [
-                { user: 'user-lee', category: 'development', title: '프로토타입 개발', startTime: '10:00', endTime: '15:00' },
-                { user: 'user-haha', category: 'planning', title: '요구사항 정리', startTime: '14:00', endTime: '17:00' }
-            ],
-            '2023-04-12': [
-                { user: 'user-kim', category: 'planning', title: '이해관계자 미팅', startTime: '10:00', endTime: '11:00' },
-                { user: 'user-park', category: 'design', title: '와이어프레임 작성', startTime: '13:00', endTime: '17:00' }
-            ],
-            // 2023년 2월 데이터
-            '2023-02-01': [
-                { user: 'user-kim', category: 'planning', title: '월간 계획 수립', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-lee', category: 'development', title: '인프라 점검', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-02-06': [
-                { user: 'user-park', category: 'design', title: '브랜드 가이드 업데이트', startTime: '10:00', endTime: '13:00' },
-                { user: 'user-haha', category: 'planning', title: '팀 스프린트 계획', startTime: '14:00', endTime: '16:00' }
-            ],
-            '2023-02-13': [
-                { user: 'user-kim', category: 'planning', title: '프로젝트 킥오프', startTime: '10:00', endTime: '12:00' },
-                { user: 'user-lee', category: 'development', title: '개발 환경 구축', startTime: '13:00', endTime: '17:00' }
-            ],
-            '2023-02-14': [
-                { user: 'user-park', category: 'design', title: '초기 디자인 컨셉', startTime: '10:00', endTime: '14:00' },
-                { user: 'user-haha', category: 'planning', title: '사용자 리서치', startTime: '15:00', endTime: '17:00' }
-            ],
-            '2023-02-20': [
-                { user: 'user-kim', category: 'planning', title: '중간 점검 회의', startTime: '10:00', endTime: '11:00' },
-                { user: 'user-lee', category: 'development', title: '코어 기능 개발', startTime: '13:00', endTime: '17:00' }
-            ],
-            '2023-02-21': [
-                { user: 'user-park', category: 'design', title: '디자인 시안 작업', startTime: '10:00', endTime: '15:00' }
-            ]
+        // 테스크 정의 (프로젝트의 작업 단위)
+        const TASKS = {
+            'task-001': {
+                taskId: 'task-001',
+                title: '요구사항 분석',
+                category: 'planning',
+                totalHours: 8
+            },
+            'task-002': {
+                taskId: 'task-002',
+                title: 'DB 설계',
+                category: 'development',
+                totalHours: 16
+            },
+            'task-003': {
+                taskId: 'task-003',
+                title: 'API 개발',
+                category: 'development',
+                totalHours: 24
+            },
+            'task-004': {
+                taskId: 'task-004',
+                title: 'UI 디자인',
+                category: 'design',
+                totalHours: 20
+            },
+            'task-005': {
+                taskId: 'task-005',
+                title: '프론트엔드 개발',
+                category: 'development',
+                totalHours: 20
+            },
+            'task-006': {
+                taskId: 'task-006',
+                title: '통합 테스트',
+                category: 'development',
+                totalHours: 12
+            },
+            'task-007': {
+                taskId: 'task-007',
+                title: '디자인 시스템 구축',
+                category: 'design',
+                totalHours: 16
+            },
+            'task-008': {
+                taskId: 'task-008',
+                title: '프로젝트 문서화',
+                category: 'planning',
+                totalHours: 10
+            }
         };
+        
+        // 테스크 배정 스케줄 (실제 작업 일정)
+        const TASK_ASSIGNMENTS = [
+            // task-001: 요구사항 분석 (8시간) - 김철수 4h + 이영희 4h
+            { taskId: 'task-001', user: 'user-kim', startDate: '2023-02-27', endDate: '2023-02-28', startTime: '10:00', endTime: '12:00' },  // 2일 연속, 각 2시간 = 4시간
+            { taskId: 'task-001', user: 'user-lee', startDate: '2023-02-27', endDate: '2023-02-27', startTime: '14:00', endTime: '18:00' },  // 4시간
+            
+            // task-002: DB 설계 (16시간) - 김철수 6h + 이영희 10h
+            { taskId: 'task-002', user: 'user-kim', startDate: '2023-03-01', endDate: '2023-03-02', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
+            { taskId: 'task-002', user: 'user-lee', startDate: '2023-03-06', endDate: '2023-03-08', startTime: '10:00', endTime: '13:00', note: '데이터베이스 스키마 설계' },  // 3일 연속, 각 3시간 = 9시간
+            { taskId: 'task-002', user: 'user-lee', startDate: '2023-03-08', endDate: '2023-03-08', startTime: '14:00', endTime: '15:00' },  // 1시간 추가
+            
+            // task-003: API 개발 (24시간) - 이영희 24h
+            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-09', endDate: '2023-03-09', startTime: '10:00', endTime: '14:00' },  // 4시간
+            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-13', endDate: '2023-03-14', startTime: '10:00', endTime: '15:00' },  // 2일 연속, 각 5시간 = 10시간
+            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-17', endDate: '2023-03-17', startTime: '10:00', endTime: '15:00' },  // 5시간
+            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-20', endDate: '2023-03-20', startTime: '10:00', endTime: '15:00' },  // 5시간
+            
+            // task-004: UI 디자인 (20시간) - 박명수 20h
+            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-01', endDate: '2023-03-01', startTime: '12:00', endTime: '14:00' },  // 2시간
+            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-03', endDate: '2023-03-03', startTime: '14:00', endTime: '16:00' },  // 2시간
+            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-08', endDate: '2023-03-10', startTime: '10:00', endTime: '13:00' },  // 3일 연속, 각 3시간 = 9시간
+            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-14', endDate: '2023-03-15', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
+            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-15', endDate: '2023-03-15', startTime: '14:00', endTime: '15:00', note: '최종 검토' },  // 1시간
+            
+            // task-005: 프론트엔드 개발 (20시간) - 김철수 12h + 박명수 8h
+            { taskId: 'task-005', user: 'user-kim', startDate: '2023-03-17', endDate: '2023-03-17', startTime: '13:00', endTime: '16:00' },  // 3시간
+            { taskId: 'task-005', user: 'user-kim', startDate: '2023-03-21', endDate: '2023-03-23', startTime: '10:00', endTime: '13:00' },  // 3일 연속, 각 3시간 = 9시간
+            { taskId: 'task-005', user: 'user-park', startDate: '2023-03-15', endDate: '2023-03-15', startTime: '14:00', endTime: '16:00' },  // 2시간 (디자인팀에서 협업)
+            { taskId: 'task-005', user: 'user-park', startDate: '2023-03-17', endDate: '2023-03-17', startTime: '13:00', endTime: '16:00' },  // 3시간
+            { taskId: 'task-005', user: 'user-park', startDate: '2023-03-27', endDate: '2023-03-27', startTime: '14:00', endTime: '17:00' },  // 3시간
+            
+            // task-006: 통합 테스트 (12시간) - 이영희 12h
+            { taskId: 'task-006', user: 'user-lee', startDate: '2023-03-24', endDate: '2023-03-24', startTime: '10:00', endTime: '15:00' },  // 5시간
+            { taskId: 'task-006', user: 'user-lee', startDate: '2023-03-29', endDate: '2023-03-30', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
+            { taskId: 'task-006', user: 'user-lee', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '10:00', endTime: '11:00' },  // 1시간
+            
+            // task-007: 디자인 시스템 구축 (16시간) - 박명수 16h
+            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-20', endDate: '2023-03-20', startTime: '10:00', endTime: '13:00' },  // 3시간
+            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-27', endDate: '2023-03-28', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
+            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-29', endDate: '2023-03-31', startTime: '10:00', endTime: '12:00' },  // 3일 연속, 각 2시간 = 6시간
+            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '14:00', endTime: '15:00' },  // 1시간
+            
+            // task-008: 프로젝트 문서화 (10시간) - 김철수 4h + 하하 6h
+            { taskId: 'task-008', user: 'user-kim', startDate: '2023-03-23', endDate: '2023-03-23', startTime: '14:00', endTime: '16:00' },  // 2시간
+            { taskId: 'task-008', user: 'user-kim', startDate: '2023-03-27', endDate: '2023-03-27', startTime: '10:00', endTime: '12:00' },  // 2시간
+            { taskId: 'task-008', user: 'user-kim', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '10:00', endTime: '12:00' },  // 2시간 (다른 카테고리)
+            { taskId: 'task-008', user: 'user-lee', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '14:00', endTime: '16:00' },  // 2시간
+            { taskId: 'task-008', user: 'user-haha', startDate: '2023-03-29', endDate: '2023-03-29', startTime: '10:00', endTime: '12:00' },  // 2시간
+            { taskId: 'task-008', user: 'user-haha', startDate: '2023-04-04', endDate: '2023-04-04', startTime: '13:00', endTime: '17:00' },  // 4시간
+            
+            // 추가 일정들 (기존 데이터 유지용)
+            { taskId: 'task-009', user: 'user-kim', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '14:00', endTime: '16:00' },  // 디자인 QA
+            { taskId: 'task-010', user: 'user-kim', startDate: '2023-04-03', endDate: '2023-04-03', startTime: '10:00', endTime: '12:00' },  // 프로젝트 회고
+            { taskId: 'task-011', user: 'user-lee', startDate: '2023-04-03', endDate: '2023-04-03', startTime: '14:00', endTime: '16:00' },  // 시스템 모니터링
+            { taskId: 'task-012', user: 'user-park', startDate: '2023-04-04', endDate: '2023-04-04', startTime: '10:00', endTime: '15:00' },  // 디자인 시스템 정리
+            { taskId: 'task-013', user: 'user-kim', startDate: '2023-04-05', endDate: '2023-04-05', startTime: '10:00', endTime: '12:00' },  // Q2 계획
+            { taskId: 'task-014', user: 'user-lee', startDate: '2023-04-05', endDate: '2023-04-05', startTime: '13:00', endTime: '16:00' }   // 성능 개선
+        ];
+        
+        // 추가 테스크 정의 (위 배정에 사용된 task-009~014)
+        TASKS['task-009'] = { taskId: 'task-009', title: '디자인 QA', category: 'design', totalHours: 2 };
+        TASKS['task-010'] = { taskId: 'task-010', title: '프로젝트 회고', category: 'planning', totalHours: 2 };
+        TASKS['task-011'] = { taskId: 'task-011', title: '시스템 모니터링', category: 'development', totalHours: 2 };
+        TASKS['task-012'] = { taskId: 'task-012', title: '디자인 시스템 정리', category: 'design', totalHours: 5 };
+        TASKS['task-013'] = { taskId: 'task-013', title: 'Q2 계획 수립', category: 'planning', totalHours: 2 };
+        TASKS['task-014'] = { taskId: 'task-014', title: '성능 개선', category: 'development', totalHours: 3 };
+        
+        // ============================================
+        // 📅 헬퍼 함수: TASK_ASSIGNMENTS로부터 날짜별 스케줄 생성
+        // ============================================
+        
+        /**
+         * 특정 날짜에 해당하는 스케줄을 가져옵니다
+         * @param {string} dateStr - 'YYYY-MM-DD' 형식의 날짜
+         * @returns {Array} 해당 날짜의 스케줄 배열
+         */
+        function getSchedulesForDate(dateStr) {
+            const schedules = [];
+            
+            TASK_ASSIGNMENTS.forEach(assignment => {
+                const task = TASKS[assignment.taskId];
+                if (!task) return;
+                
+                //날짜가 범위 안에 있는지 확인
+                const targetDate = new Date(dateStr);
+                const startDate = new Date(assignment.startDate);
+                const endDate = new Date(assignment.endDate);
+                
+                if (targetDate >= startDate && targetDate <= endDate) {
+                    // 이 배정이 해당 날짜에 속함
+                    schedules.push({
+                        taskId: assignment.taskId,
+                        user: assignment.user,
+                        category: task.category,
+                        title: task.title,
+                        startTime: assignment.startTime,
+                        endTime: assignment.endTime,
+                        note: assignment.note || '',
+                        startDate: assignment.startDate,
+                        endDate: assignment.endDate,
+                        totalHours: task.totalHours
+                    });
+                }
+            });
+            
+            return schedules;
+        }
+        
+        // 하위 호환성을 위한 SCHEDULE_DATA (기존 코드와 호환)
+        const SCHEDULE_DATA = {
+        };
+        
+        // SCHEDULE_DATA를 동적으로 생성하는 Proxy
+        const SCHEDULE_DATA_HANDLER = {
+            get: function(target, dateStr) {
+                if (typeof dateStr !== 'string' || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    return target[dateStr];
+                }
+                // 캐시에 없으면 동적으로 생성
+                if (!target[dateStr]) {
+                    target[dateStr] = getSchedulesForDate(dateStr);
+                }
+                return target[dateStr];
+            }
+        };
+        
+        const SCHEDULE_DATA_PROXY = new Proxy(SCHEDULE_DATA, SCHEDULE_DATA_HANDLER);
         
         // ============================================
         // 🎯 이벤트 핸들러 영역
@@ -582,7 +635,7 @@
         
         // 특정 날짜의 일정 데이터 가져오기
         function getScheduleByDate(dateStr) {
-            return SCHEDULE_DATA[dateStr] || [];
+            return getSchedulesForDate(dateStr);
         }
         
         // 날짜별로 사용자를 그룹화하여 일정 정보 가져오기
@@ -846,9 +899,13 @@
                             const durationHours = endHour - startHour;
                             const height = durationHours * 80 - 20;
                             
+                            // 고유 일정 ID 생성 (현재 날짜 기준 - 날짜별로 독립적인 블록)
+                            const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
+                            
                             // 컬럼 분할: 동일한 너비로 나눔
                             const widthPercent = 100 / columnCount;
                             const leftPercent = (100 / columnCount) * index;
+                            const rightPercent = 100 - leftPercent - widthPercent;
                             
                             const note = schedule.note ? `<br><small style="opacity:0.7;">${schedule.note}</small>` : '';
                             const noteText = schedule.note ? schedule.note : '';
@@ -862,7 +919,7 @@
                                 ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                             </div>`;
                             
-                            cellContent += `<div class="task ${category.color} ${schedule.user}" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: auto; width: calc(${widthPercent}% - 10px); top: 5px; z-index: ${index + 1}; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}">[${category.name}] ${schedule.title} - ${user.name}${note}${tooltip}</div>`;
+                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                         });
                     } else {
                         // 겹치지 않는 경우 - 전체 너비 사용
@@ -874,6 +931,10 @@
                             const durationHours = endHour - startHour;
                             const height = durationHours * 80 - 20;
                             
+                            // 고유 일정 ID 생성 (현재 날짜 기준 - 날짜별로 독립적인 블록)
+                            const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
+                            console.log(`✅ 시작 블록 생성 - ID: ${scheduleId}, 날짜: ${dateStr}, 시간: ${hour}`);
+                            
                             const note = schedule.note ? `<br><small style="opacity:0.7;">${schedule.note}</small>` : '';
                             const noteText = schedule.note ? schedule.note : '';
                             
@@ -886,7 +947,56 @@
                                 ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                             </div>`;
                             
-                            cellContent += `<div class="task ${category.color} ${schedule.user}" style="height: ${height}px;">[${category.name}] ${schedule.title} - ${user.name}${note}${tooltip}</div>`;
+                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                        });
+                    }
+                    
+                    // 중간 시간대 일정 (시작하지 않았지만 진행 중인 일정)에 대한 호버 영역 추가
+                    const currentHourNum = parseInt(hour.split(':')[0]);
+                    const middleSchedules = schedules.filter(s => {
+                        const startHourNum = parseInt(s.startTime.split(':')[0]);
+                        const endHourNum = parseInt(s.endTime.split(':')[0]);
+                        return s.startTime !== hour && currentHourNum >= startHourNum && currentHourNum < endHourNum;
+                    });
+                    
+                    if (middleSchedules.length > 0) {
+                        // 현재 시간에 진행 중인 모든 일정 (시작 + 중간)
+                        const allOngoingSchedules = schedules.filter(s => {
+                            const startHourNum = parseInt(s.startTime.split(':')[0]);
+                            const endHourNum = parseInt(s.endTime.split(':')[0]);
+                            return currentHourNum >= startHourNum && currentHourNum < endHourNum;
+                        });
+                        
+                        middleSchedules.forEach(schedule => {
+                            // 고유 일정 ID 생성 (현재 날짜 기준 - 날짜별로 독립적인 블록)
+                            const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
+                            console.log(`🔴 호버 영역 생성 - ID: ${scheduleId}, 날짜: ${dateStr}, 시간: ${hour}`);
+                            
+                            // 이 일정이 전체 진행 중인 일정 중 몇 번째인지 찾기
+                            const scheduleIndex = allOngoingSchedules.findIndex(s => 
+                                s.taskId === schedule.taskId && s.user === schedule.user && s.startTime === schedule.startTime
+                            );
+                            
+                            // 컬럼 위치 계산 (시작 시간과 동일한 위치)
+                            const totalColumns = allOngoingSchedules.length;
+                            const widthPercent = 100 / totalColumns;
+                            const leftPercent = (100 / totalColumns) * scheduleIndex;
+                            const rightPercent = 100 - leftPercent - widthPercent;
+                            
+                            // 일정의 전체 높이 계산
+                            const startHour = parseInt(schedule.startTime.split(':')[0]);
+                            const endHour = parseInt(schedule.endTime.split(':')[0]);
+                            const durationHours = endHour - startHour;
+                            const totalHeight = durationHours * 80 - 20;
+                            
+                            // 현재 시간대에서의 오프셋 계산
+                            const hourOffset = currentHourNum - startHour;
+                            const topOffset = hourOffset * 80 + 5;
+                            const remainingHeight = totalHeight - (hourOffset * 80);
+                            const cellHeight = Math.min(80 - 5, remainingHeight);
+                            
+                            // 투명한 호버 영역 - 셀 전체 높이를 차지
+                            cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 0; bottom: 0; z-index: 100; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
                         });
                     }
                     
@@ -895,6 +1005,69 @@
                 
                 weekGrid.innerHTML += rowHTML;
             });
+            
+            // 호버 이벤트 설정
+            setupScheduleHoverEvents();
+        }
+        
+        // 일정 호버 이벤트 핸들러 설정
+        function setupScheduleHoverEvents() {
+            console.log('🔧 호버 이벤트 설정 중...');
+            
+            // 모든 호버 영역에 직접 이벤트 리스너 추가
+            const hoverAreas = document.querySelectorAll('.task-hover-area');
+            console.log(`발견된 호버 영역: ${hoverAreas.length}개`);
+            
+            hoverAreas.forEach((hoverArea, index) => {
+                const scheduleId = hoverArea.getAttribute('data-schedule-id');
+                console.log(`호버 영역 ${index}: ${scheduleId}`);
+                
+                if (!scheduleId) return;
+                
+                // 기존 이벤트 제거 (중복 방지)
+                hoverArea.onmouseenter = null;
+                hoverArea.onmouseleave = null;
+                
+                // 마우스 올렸을 때
+                hoverArea.onmouseenter = function() {
+                    console.log(`🖱️ 호버 진입: ${scheduleId}`);
+                    
+                    const taskBlock = document.querySelector(`.task[data-schedule-id="${scheduleId}"]`);
+                    console.log('찾은 블록:', taskBlock);
+                    
+                    if (taskBlock) {
+                        // 블록의 z-index를 올려서 호버 영역보다 위에 표시
+                        taskBlock.style.zIndex = '10000';
+                        
+                        const tooltip = taskBlock.querySelector('.task-detail-tooltip');
+                        console.log('찾은 툴팁:', tooltip);
+                        
+                        if (tooltip) {
+                            tooltip.classList.add('force-show');
+                            console.log('✅ 툴팁 표시');
+                        }
+                    }
+                };
+                
+                // 마우스 떠났을 때
+                hoverArea.onmouseleave = function() {
+                    console.log(`🖱️ 호버 이탈: ${scheduleId}`);
+                    
+                    const taskBlock = document.querySelector(`.task[data-schedule-id="${scheduleId}"]`);
+                    if (taskBlock) {
+                        // z-index를 원래대로 복구
+                        taskBlock.style.zIndex = '1';
+                        
+                        const tooltip = taskBlock.querySelector('.task-detail-tooltip');
+                        if (tooltip) {
+                            tooltip.classList.remove('force-show');
+                            console.log('❌ 툴팁 숨김');
+                        }
+                    }
+                };
+            });
+            
+            console.log('✅ 호버 이벤트 설정 완료');
         }
         
         // ============================================
@@ -943,9 +1116,13 @@
                         const durationHours = endHour - startHour;
                         const height = durationHours * 80 - 20;
                         
+                        // 고유 일정 ID 생성
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${schedule.startDate}-${schedule.startTime.replace(':', '')}`;
+                        
                         // 컬럼 분할: 동일한 너비로 나눔
                         const widthPercent = 100 / columnCount;
                         const leftPercent = (100 / columnCount) * index;
+                        const rightPercent = 100 - leftPercent - widthPercent;
                         
                         const note = schedule.note ? `<br><small style="opacity:0.7;">${schedule.note}</small>` : '';
                         const noteText = schedule.note ? schedule.note : '';
@@ -959,7 +1136,7 @@
                             ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                         </div>`;
                         
-                        cellContent += `<div class="task ${category.color} ${schedule.user}" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: auto; width: calc(${widthPercent}% - 10px); top: 5px; z-index: ${index + 1}; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}">[${category.name}] ${schedule.title} - ${user.name}${note}${tooltip}</div>`;
+                        cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                     });
                 } else {
                     // 겹치지 않는 경우 - 전체 너비 사용
@@ -971,6 +1148,9 @@
                         const durationHours = endHour - startHour;
                         const height = durationHours * 80 - 20;
                         
+                        // 고유 일정 ID 생성
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${schedule.startDate}-${schedule.startTime.replace(':', '')}`;
+                        
                         const note = schedule.note ? `<br><small style="opacity:0.7;">${schedule.note}</small>` : '';
                         const noteText = schedule.note ? schedule.note : '';
                         
@@ -983,12 +1163,51 @@
                             ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                         </div>`;
                         
-                        cellContent += `<div class="task ${category.color} ${schedule.user}" style="height: ${height}px;">[${category.name}] ${schedule.title} - ${user.name}${note}${tooltip}</div>`;
+                        cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                    });
+                }
+                
+                // 중간 시간대 일정 (시작하지 않았지만 진행 중인 일정)에 대한 호버 영역 추가
+                const currentHourNum = parseInt(hour.split(':')[0]);
+                const middleSchedules = schedules.filter(s => {
+                    const startHourNum = parseInt(s.startTime.split(':')[0]);
+                    const endHourNum = parseInt(s.endTime.split(':')[0]);
+                    return s.startTime !== hour && currentHourNum >= startHourNum && currentHourNum < endHourNum;
+                });
+                
+                if (middleSchedules.length > 0) {
+                    // 현재 시간에 진행 중인 모든 일정 (시작 + 중간)
+                    const allOngoingSchedules = schedules.filter(s => {
+                        const startHourNum = parseInt(s.startTime.split(':')[0]);
+                        const endHourNum = parseInt(s.endTime.split(':')[0]);
+                        return currentHourNum >= startHourNum && currentHourNum < endHourNum;
+                    });
+                    
+                    middleSchedules.forEach(schedule => {
+                        // 고유 일정 ID 생성
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${schedule.startDate}-${schedule.startTime.replace(':', '')}`;
+                        
+                        // 이 일정이 전체 진행 중인 일정 중 몇 번째인지 찾기
+                        const scheduleIndex = allOngoingSchedules.findIndex(s => 
+                            s.user === schedule.user && s.startTime === schedule.startTime
+                        );
+                        
+                        // 컬럼 위치 계산 (시작 시간과 동일한 위치)
+                        const totalColumns = allOngoingSchedules.length;
+                        const widthPercent = 100 / totalColumns;
+                        const leftPercent = (100 / totalColumns) * scheduleIndex;
+                        const rightPercent = 100 - leftPercent - widthPercent;
+                        
+                        // 투명한 호버 영역 - 셀 전체 높이 차지
+                        cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 0; bottom: 0; z-index: 100; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
                     });
                 }
                 
                 dayGrid.innerHTML += `<div class="cell time-label">${hour}</div><div class="cell" style="position: relative;">${cellContent}</div>`;
             });
+            
+            // 호버 이벤트 설정
+            setupScheduleHoverEvents();
         }
         
         // ============================================
