@@ -543,7 +543,7 @@
                     <label for="team-dev">개발팀 (전체)</label>
                 </div>
                 <div class="member-item">
-                    <input type="checkbox" checked class="member-check dev-member" data-user="user-kim" onchange="handleMemberClick('dev')"> 김철수
+                    <input type="checkbox" checked class="member-check dev-member" data-user="user-kim" onchange="handleMemberClick('dev')"> 이경수
                 </div>
                 <div class="member-item">
                     <input type="checkbox" checked class="member-check dev-member" data-user="user-lee" onchange="handleMemberClick('dev')"> 이영희
@@ -592,19 +592,27 @@
         // 사용자 정보 표시
         document.getElementById('userInfo').textContent = `${currentUser.name} (${getRoleName(currentUser.role)})`;
 
+        // 현재 페이지 감지
+        const currentPage = window.location.pathname.split('/').pop() || 'lego_mockup.html';
+        
         // 역할별 메뉴 추가
         const navMenu = document.getElementById('navMenu');
         if (currentUser.role === 'admin') {
             navMenu.innerHTML += `
-                <button class="nav-menu-btn" onclick="location.href='admin.html'">관리자 대시보드</button>
-                <button class="nav-menu-btn active" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
-                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
+                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
             `;
         } else if (currentUser.role === 'teamlead') {
             navMenu.innerHTML += `
-                <button class="nav-menu-btn" onclick="location.href='teamlead.html'">팀장 대시보드</button>
-                <button class="nav-menu-btn active" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
-                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
             `;
         } else {
             navMenu.innerHTML += `
@@ -641,7 +649,7 @@
         
         // 사용자 정보
         const USERS = {
-            'user-kim': { name: '김철수', team: 'dev' },
+            'user-kim': { name: '이경수', team: 'dev' },
             'user-lee': { name: '이영희', team: 'dev' },
             'user-park': { name: '박명수', team: 'design' },
             'user-haha': { name: '하하', team: 'design' }
@@ -2219,7 +2227,8 @@
             
             // 사용자 매핑 (실제로는 엑셀에서 담당자 정보를 읽어와야 함)
             const userMapping = {
-                '김철수': 'user-kim',
+                '이경수': 'user-kim',
+                '김철수': 'user-kim', // 이전 데이터 호환성
                 '이영희': 'user-lee',
                 '박명수': 'user-park',
                 '하하': 'user-haha'

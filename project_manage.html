@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 관리 - Lego</title>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        :root {
+            --bg-gray: #f4f6f8;
+            --border-color: #e5e7eb;
+            --primary-blue: #2563eb;
+            --text-dark: #1e293b;
+            --text-gray: #64748b;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-gray);
+            margin: 0; padding: 0;
+            color: var(--text-dark);
+        }
+
+        /* --- Header Navigation --- */
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .nav-left h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--primary-blue);
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-menu-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-menu-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        .nav-menu-btn.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-dark);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        /* --- Main Content --- */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .page-subtitle {
+            color: var(--text-gray);
+            font-size: 1rem;
+        }
+
+        /* --- Project Cards --- */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            border-color: var(--primary-blue);
+        }
+
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .project-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 5px;
+        }
+
+        .project-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .project-status.in-progress {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .project-status.completed {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .project-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--bg-gray);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-gray);
+        }
+
+        .project-progress {
+            margin-top: 20px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-gray);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-blue) 0%, #3b82f6 100%);
+            transition: width 0.3s;
+        }
+
+        .project-members {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .members-label {
+            font-size: 0.85rem;
+            color: var(--text-gray);
+            margin-bottom: 10px;
+        }
+
+        .members-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .member-tag {
+            padding: 4px 12px;
+            background: var(--bg-gray);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--text-dark);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .empty-description {
+            color: var(--text-gray);
+            margin-bottom: 30px;
+        }
+
+        .empty-action {
+            padding: 12px 24px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .empty-action:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+        }
+
+        /* 프로젝트 상세 모달 */
+        .project-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .project-detail-modal.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .modal-header {
+            padding: 24px 30px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-gray);
+            padding: 5px 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: var(--bg-gray);
+            color: var(--text-dark);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .detail-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .detail-stat-card {
+            background: var(--bg-gray);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .detail-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 5px;
+        }
+
+        .detail-stat-label {
+            font-size: 0.9rem;
+            color: var(--text-gray);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid var(--border-color);
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .task-list-container {
+            display: grid;
+            gap: 15px;
+        }
+
+        .task-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.2s;
+        }
+
+        .task-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .task-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-dark);
+        }
+
+        .task-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .task-badge.scheduled {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .task-badge.unscheduled {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .task-info {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--text-gray);
+            margin-top: 10px;
+        }
+
+        .task-info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .member-section {
+            margin-bottom: 25px;
+        }
+
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .member-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .member-hours {
+            font-size: 0.9rem;
+            color: var(--text-gray);
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+        <div class="nav-left">
+            <h1>🧱 Lego</h1>
+            <div id="navMenu" class="nav-menu">
+                <!-- 동적 생성 -->
+            </div>
+        </div>
+        <div class="nav-right">
+            <span class="user-info" id="userInfo">사용자</span>
+            <button class="logout-btn" onclick="logout()">로그아웃</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <div class="page-header">
+            <h1 class="page-title">📁 프로젝트 관리</h1>
+            <p class="page-subtitle">등록된 프로젝트와 테스크 현황을 확인하세요</p>
+        </div>
+
+        <div id="projectsContainer" class="projects-grid">
+            <!-- 동적 생성 -->
+        </div>
+    </div>
+
+    <!-- 프로젝트 상세 모달 -->
+    <div id="projectDetailModal" class="project-detail-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalProjectName">프로젝트 상세</h2>
+                <button class="close-btn" onclick="closeProjectDetail()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-stats" id="detailStats">
+                    <!-- 동적 생성 -->
+                </div>
+                
+                <div class="filter-buttons">
+                    <button class="filter-btn active" id="filterByMemberBtn" onclick="changeDetailFilter('member')">
+                        👤 팀원별
+                    </button>
+                    <button class="filter-btn" id="filterByTaskBtn" onclick="changeDetailFilter('task')">
+                        📋 테스크별
+                    </button>
+                </div>
+
+                <div id="taskListContainer" class="task-list-container">
+                    <!-- 동적 생성 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 로그인 체크
+        const loggedInUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!loggedInUser) {
+            alert('로그인이 필요합니다.');
+            window.location.href = 'login.html';
+        }
+
+        function getRoleName(role) {
+            const roleNames = {
+                'admin': '관리자',
+                'teamlead': '팀장',
+                'user': '팀원'
+            };
+            return roleNames[role] || '사용자';
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // 사용자 정보 표시
+        document.getElementById('userInfo').textContent = `${loggedInUser.name} (${getRoleName(loggedInUser.role)})`;
+
+        // 현재 페이지 감지
+        const currentPage = window.location.pathname.split('/').pop() || 'project_manage.html';
+        
+        // 역할별 메뉴 추가
+        const navMenu = document.getElementById('navMenu');
+        if (loggedInUser.role === 'admin') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
+                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else if (loggedInUser.role === 'teamlead') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        }
+
+        // 프로젝트 데이터 로드 및 렌더링
+        function loadProjects() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) {
+                renderEmptyState();
+                return;
+            }
+
+            try {
+                const data = JSON.parse(saved);
+                const projectData = data.projectData || [];
+                const schedules = data.schedules || [];
+
+                if (projectData.length === 0) {
+                    renderEmptyState();
+                    return;
+                }
+
+                // 프로젝트별로 그룹화
+                const projects = {};
+                projectData.forEach(task => {
+                    const projectName = task.사업명 || '미분류 프로젝트';
+                    if (!projects[projectName]) {
+                        projects[projectName] = {
+                            name: projectName,
+                            tasks: [],
+                            totalStandardHours: 0,
+                            totalAssignedHours: 0,
+                            members: new Set()
+                        };
+                    }
+                    projects[projectName].tasks.push(task);
+                    projects[projectName].totalStandardHours += task.기준시간 || 0;
+                    projects[projectName].totalAssignedHours += task.할당시간 || 0;
+                    if (task.이름) {
+                        projects[projectName].members.add(task.이름);
+                    }
+                });
+
+                // 시간 계산 함수
+                function calculateHours(startTime, endTime, startDate = null, endDate = null) {
+                    const [startH, startM] = (startTime || '09:00').split(':').map(Number);
+                    const [endH, endM] = (endTime || '18:00').split(':').map(Number);
+                    
+                    let hours = (endH * 60 + endM - startH * 60 - startM) / 60;
+                    
+                    // 날짜 범위가 있으면 일수에 따라 시간 계산
+                    if (startDate && endDate && startDate !== endDate) {
+                        const start = new Date(startDate);
+                        const end = new Date(endDate);
+                        const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                        
+                        if (daysDiff > 1) {
+                            // 첫날: 시작시간부터 18시까지
+                            const firstDayHours = (18 - startH) + (startM / 60);
+                            // 마지막날: 9시부터 종료시간까지
+                            const lastDayHours = (endH - 9) + (endM / 60);
+                            // 중간날들: 9시부터 18시까지 (9시간)
+                            const middleDaysHours = (daysDiff - 2) * 9;
+                            
+                            hours = firstDayHours + lastDayHours + middleDaysHours;
+                        }
+                    }
+                    
+                    return Math.max(0, hours);
+                }
+
+                // 스케줄 통계 계산
+                Object.keys(projects).forEach(projectName => {
+                    const project = projects[projectName];
+                    const projectTaskIds = project.tasks.map(t => t.id);
+                    const projectSchedules = schedules.filter(s => projectTaskIds.includes(s.taskId));
+                    
+                    project.scheduledTasks = new Set(projectSchedules.map(s => s.taskId)).size;
+                    project.totalScheduledHours = projectSchedules.reduce((sum, s) => {
+                        // assignedHours가 있으면 사용, 없으면 시간 계산
+                        if (s.assignedHours) {
+                            return sum + s.assignedHours;
+                        }
+                        return sum + calculateHours(s.startTime, s.endTime, s.startDate, s.endDate);
+                    }, 0);
+                });
+
+                renderProjects(projects);
+            } catch (e) {
+                console.error('프로젝트 로드 오류:', e);
+                renderEmptyState();
+            }
+        }
+
+        function renderProjects(projects) {
+            const container = document.getElementById('projectsContainer');
+            container.innerHTML = '';
+
+            Object.keys(projects).forEach(projectName => {
+                const project = projects[projectName];
+                const progress = project.totalAssignedHours > 0 
+                    ? (project.totalScheduledHours / project.totalAssignedHours) * 100 
+                    : 0;
+                
+                const status = progress >= 100 ? 'completed' : progress > 0 ? 'in-progress' : 'pending';
+                const statusText = progress >= 100 ? '완료' : progress > 0 ? '진행중' : '대기';
+
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.onclick = () => {
+                    // project_task_manage.html로 이동하면서 프로젝트 이름을 파라미터로 전달
+                    window.location.href = `project_task_manage.html?project=${encodeURIComponent(project.name)}`;
+                };
+
+                card.innerHTML = `
+                    <div class="project-header">
+                        <div>
+                            <div class="project-name">${project.name}</div>
+                        </div>
+                        <div class="project-status ${status}">${statusText}</div>
+                    </div>
+                    
+                    <div class="project-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${project.tasks.length}</div>
+                            <div class="stat-label">전체 테스크</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${project.scheduledTasks}</div>
+                            <div class="stat-label">등록된 테스크</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${project.totalStandardHours}</div>
+                            <div class="stat-label">기준 시간 (h)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${project.totalAssignedHours}</div>
+                            <div class="stat-label">할당 시간 (h)</div>
+                        </div>
+                    </div>
+
+                    <div class="project-progress">
+                        <div class="progress-label">
+                            <span>스케줄 등록률</span>
+                            <span><strong>${Math.round(progress)}%</strong> (${Math.round(project.totalScheduledHours)}h / ${project.totalAssignedHours}h)</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${Math.min(100, progress)}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="project-members">
+                        <div class="members-label">참여 인원 (${project.members.size}명)</div>
+                        <div class="members-list">
+                            ${Array.from(project.members).slice(0, 5).map(name => 
+                                `<span class="member-tag">${name}</span>`
+                            ).join('')}
+                            ${project.members.size > 5 ? `<span class="member-tag">+${project.members.size - 5}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function renderEmptyState() {
+            const container = document.getElementById('projectsContainer');
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">📁</div>
+                    <div class="empty-title">등록된 프로젝트가 없습니다</div>
+                    <div class="empty-description">
+                        프로젝트를 등록하려면 프로젝트 등록 페이지에서 엑셀 파일을 업로드하세요.
+                    </div>
+                    <button class="empty-action" onclick="location.href='project_register.html'">
+                        프로젝트 등록하기
+                    </button>
+                </div>
+            `;
+        }
+
+        // 프로젝트 상세 모달 관련 변수
+        let currentDetailProject = null;
+        let currentDetailFilter = 'member';
+        let allProjectData = [];
+        let allSchedules = [];
+
+        // 프로젝트 상세 모달 표시
+        function showProjectDetail(project) {
+            currentDetailProject = project;
+            currentDetailFilter = 'member';
+            
+            // 모달 제목 설정
+            document.getElementById('modalProjectName').textContent = project.name;
+            
+            // 통계 표시
+            const statsContainer = document.getElementById('detailStats');
+            const progress = project.totalAssignedHours > 0 
+                ? (project.totalScheduledHours / project.totalAssignedHours) * 100 
+                : 0;
+            
+            statsContainer.innerHTML = `
+                <div class="detail-stat-card">
+                    <div class="detail-stat-value">${project.tasks.length}</div>
+                    <div class="detail-stat-label">전체 테스크</div>
+                </div>
+                <div class="detail-stat-card">
+                    <div class="detail-stat-value">${project.scheduledTasks}</div>
+                    <div class="detail-stat-label">등록된 테스크</div>
+                </div>
+                <div class="detail-stat-card">
+                    <div class="detail-stat-value">${project.totalStandardHours}</div>
+                    <div class="detail-stat-label">기준 시간 (h)</div>
+                </div>
+                <div class="detail-stat-card">
+                    <div class="detail-stat-value">${project.totalAssignedHours}</div>
+                    <div class="detail-stat-label">할당 시간 (h)</div>
+                </div>
+                <div class="detail-stat-card">
+                    <div class="detail-stat-value">${Math.round(progress)}%</div>
+                    <div class="detail-stat-label">스케줄 등록률</div>
+                </div>
+                <div class="detail-stat-card">
+                    <div class="detail-stat-value">${project.members.size}</div>
+                    <div class="detail-stat-label">참여 인원</div>
+                </div>
+            `;
+            
+            // 필터 버튼 초기화
+            document.getElementById('filterByMemberBtn').classList.add('active');
+            document.getElementById('filterByTaskBtn').classList.remove('active');
+            
+            // 테스크 리스트 렌더링
+            renderProjectTaskList();
+            
+            // 모달 표시
+            document.getElementById('projectDetailModal').classList.add('show');
+        }
+
+        // 프로젝트 상세 모달 닫기
+        function closeProjectDetail() {
+            document.getElementById('projectDetailModal').classList.remove('show');
+            currentDetailProject = null;
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('projectDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeProjectDetail();
+            }
+        });
+
+        // 필터 변경
+        function changeDetailFilter(filter) {
+            currentDetailFilter = filter;
+            
+            // 버튼 활성화 상태 변경
+            document.getElementById('filterByMemberBtn').classList.toggle('active', filter === 'member');
+            document.getElementById('filterByTaskBtn').classList.toggle('active', filter === 'task');
+            
+            // 리스트 재렌더링
+            renderProjectTaskList();
+        }
+
+        // 프로젝트 테스크 리스트 렌더링
+        function renderProjectTaskList() {
+            if (!currentDetailProject) return;
+            
+            const container = document.getElementById('taskListContainer');
+            container.innerHTML = '';
+            
+            // localStorage에서 전체 데이터 로드
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) {
+                container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 40px;">데이터를 불러올 수 없습니다.</p>';
+                return;
+            }
+            
+            const data = JSON.parse(saved);
+            allProjectData = data.projectData || [];
+            allSchedules = data.schedules || [];
+            
+            // 현재 프로젝트의 테스크만 필터링
+            const projectTasks = allProjectData.filter(task => task.사업명 === currentDetailProject.name);
+            
+            if (projectTasks.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #64748b; padding: 40px;">테스크가 없습니다.</p>';
+                return;
+            }
+            
+            if (currentDetailFilter === 'member') {
+                renderByMember(container, projectTasks);
+            } else {
+                renderByTask(container, projectTasks);
+            }
+        }
+
+        // 팀원별 렌더링
+        function renderByMember(container, tasks) {
+            const memberGroups = {};
+            
+            tasks.forEach(task => {
+                if (!memberGroups[task.이름]) {
+                    memberGroups[task.이름] = {
+                        이름: task.이름,
+                        소속: task.소속,
+                        부서: task.부서,
+                        테스크: []
+                    };
+                }
+                memberGroups[task.이름].테스크.push(task);
+            });
+            
+            Object.values(memberGroups).forEach(member => {
+                const totalHours = member.테스크.reduce((sum, t) => sum + t.할당시간, 0);
+                
+                const memberSection = document.createElement('div');
+                memberSection.className = 'member-section';
+                
+                memberSection.innerHTML = `
+                    <div class="member-header">
+                        <div class="member-name">${member.이름} (${member.소속} - ${member.부서})</div>
+                        <div class="member-hours">총 ${totalHours}시간</div>
+                    </div>
+                `;
+                
+                const taskList = document.createElement('div');
+                taskList.className = 'task-list-container';
+                
+                member.테스크.forEach(task => {
+                    const isScheduled = allSchedules.some(s => 
+                        s.taskId === task.id && 
+                        (s.userName === task.이름 || s.user === task.이름)
+                    );
+                    
+                    const taskCard = document.createElement('div');
+                    taskCard.className = 'task-card';
+                    taskCard.innerHTML = `
+                        <div class="task-header">
+                            <div class="task-name">${task.중분류 || task.소분류}</div>
+                            <span class="task-badge ${isScheduled ? 'scheduled' : 'unscheduled'}">
+                                ${isScheduled ? '✓ 등록됨' : '⏰ 미등록'}
+                            </span>
+                        </div>
+                        <div class="task-info">
+                            <div class="task-info-item">
+                                <span>📋 ${task.대분류} > ${task.중분류} > ${task.소분류}</span>
+                            </div>
+                            <div class="task-info-item">
+                                <span>⏱️ 할당: ${task.할당시간}시간</span>
+                            </div>
+                            <div class="task-info-item">
+                                <span>📊 기준: ${task.기준시간}시간</span>
+                            </div>
+                        </div>
+                        ${task.비고 ? `<div style="margin-top: 10px; font-size: 0.85rem; color: #64748b;">📝 ${task.비고}</div>` : ''}
+                    `;
+                    taskList.appendChild(taskCard);
+                });
+                
+                memberSection.appendChild(taskList);
+                container.appendChild(memberSection);
+            });
+        }
+
+        // 테스크별 렌더링
+        function renderByTask(container, tasks) {
+            const taskGroups = {};
+            
+            tasks.forEach(task => {
+                const key = `${task.대분류}-${task.중분류}-${task.소분류}`;
+                if (!taskGroups[key]) {
+                    taskGroups[key] = {
+                        대분류: task.대분류,
+                        중분류: task.중분류,
+                        소분류: task.소분류,
+                        기준시간: task.기준시간,
+                        할당: []
+                    };
+                }
+                taskGroups[key].할당.push({
+                    이름: task.이름,
+                    할당시간: task.할당시간,
+                    taskId: task.id
+                });
+            });
+            
+            Object.values(taskGroups).forEach(taskGroup => {
+                const totalAllocated = taskGroup.할당.reduce((sum, a) => sum + a.할당시간, 0);
+                
+                const taskCard = document.createElement('div');
+                taskCard.className = 'task-card';
+                
+                let memberListHTML = '';
+                taskGroup.할당.forEach(assignment => {
+                    const isScheduled = allSchedules.some(s => 
+                        s.taskId === assignment.taskId && 
+                        (s.userName === assignment.이름 || s.user === assignment.이름)
+                    );
+                    
+                    memberListHTML += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+                            <div>
+                                <span style="font-weight: 500;">${assignment.이름}</span>
+                                <span class="task-badge ${isScheduled ? 'scheduled' : 'unscheduled'}" style="margin-left: 10px;">
+                                    ${isScheduled ? '✓ 등록됨' : '⏰ 미등록'}
+                                </span>
+                            </div>
+                            <span style="color: #64748b;">${assignment.할당시간}시간</span>
+                        </div>
+                    `;
+                });
+                
+                taskCard.innerHTML = `
+                    <div class="task-header">
+                        <div class="task-name">${taskGroup.중분류}</div>
+                        <div style="font-size: 0.85rem; color: #64748b;">
+                            기준: ${taskGroup.기준시간}시간 | 할당: ${totalAllocated}시간
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.85rem; color: #64748b;">
+                        ${taskGroup.대분류} > ${taskGroup.소분류}
+                    </div>
+                    <div style="margin-top: 15px;">
+                        ${memberListHTML}
+                    </div>
+                `;
+                
+                container.appendChild(taskCard);
+            });
+        }
+
+        // 페이지 로드 시 프로젝트 로드
+        window.onload = function() {
+            loadProjects();
+            
+            // localStorage 변경 감지
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'projectSchedules') {
+                    loadProjects();
+                    if (currentDetailProject) {
+                        renderProjectTaskList();
+                    }
+                }
+            });
+            
+            // 주기적으로 체크 (같은 탭에서도 업데이트)
+            setInterval(function() {
+                loadProjects();
+                if (currentDetailProject) {
+                    renderProjectTaskList();
+                }
+            }, 3000);
+        };
+    </script>
+</body>
+</html>
+
