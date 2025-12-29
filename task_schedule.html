@@ -305,17 +305,77 @@
             grid-column: 1 / -1;
         }
 
+        .project-section {
+            margin-bottom: 30px;
+        }
+
+        .project-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .project-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .project-stats {
+            font-size: 0.9rem;
+            opacity: 0.95;
+        }
+
         .task-overview {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 15px;
+            background: white;
+            padding: 20px;
+            border-radius: 0 0 12px 12px;
+            border: 1px solid var(--border-color);
+            border-top: none;
         }
 
         .task-overview-item {
             background: #f8fafc;
-            padding: 15px;
+            padding: 18px;
             border-radius: 8px;
             border-left: 4px solid var(--primary-blue);
+            transition: all 0.2s;
+        }
+
+        .task-overview-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .task-category-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .badge-primary {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-secondary {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+
+        .badge-tertiary {
+            background: #fef3c7;
+            color: #92400e;
         }
 
         .allocation-list {
@@ -405,38 +465,32 @@
             </div>
         </div>
 
-        <div class="main-layout">
-            <!-- 내 테스크 -->
-            <div class="panel">
-                <div class="user-select-section">
-                    <label>👤 사용자 선택</label>
-                    <select id="userSelect" onchange="filterMyTasks()">
-                        <option value="">선택하세요</option>
-                    </select>
+        <!-- 사용자 정보 -->
+        <div class="panel" style="margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #475569;">👤 로그인 사용자</label>
+                    <div style="padding: 10px; background: white; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600;">
+                        <span id="currentUserDisplay">-</span>
+                    </div>
                 </div>
-
-                <h2>📌 내가 할당받은 테스크</h2>
-                <div id="myTasksList">
-                    <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
-                        사용자를 선택하세요
-                    </p>
-                </div>
-            </div>
-
-            <!-- 전체 프로젝트 테스크 -->
-            <div class="panel">
-                <h2>📊 전체 프로젝트 테스크</h2>
-                <div id="projectTasksList">
-                    <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
-                        데이터를 업로드하세요
-                    </p>
-                </div>
+                <button class="btn" onclick="loadSampleData()" style="margin-top: 24px;">📝 샘플 데이터 로드</button>
             </div>
         </div>
 
-        <!-- 테스크 상세 리스트 -->
+        <!-- 내 테스크 -->
+        <div class="panel">
+            <h2>📌 내가 할당받은 테스크</h2>
+            <div id="myTasksList">
+                <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
+                    데이터를 업로드하거나 샘플 데이터를 로드하세요
+                </p>
+            </div>
+        </div>
+
+        <!-- 내 프로젝트의 테스크 상세 -->
         <div class="panel task-list-panel">
-            <h2>📋 테스크 할당 현황</h2>
+            <h2>📋 내 프로젝트 테스크 현황</h2>
             <div class="task-overview" id="taskOverview">
                 <!-- 동적 생성 -->
             </div>
@@ -495,8 +549,20 @@
         
         let projectData = [];
         let schedules = [];
-        let currentUser = '';
+        let currentUser = loggedInUser.name; // 로그인한 사용자의 이름
         let currentEditingTask = null;
+
+        // 현재 사용자 표시
+        document.getElementById('currentUserDisplay').textContent = `${loggedInUser.name} (${getRoleName(loggedInUser.role)})`;
+
+        function getRoleName(role) {
+            const roleNames = {
+                'admin': '관리자',
+                'teamlead': '팀장',
+                'user': '팀원'
+            };
+            return roleNames[role] || '사용자';
+        }
 
         function handleExcelUpload(event) {
             const file = event.target.files[0];
@@ -536,32 +602,20 @@
                 비고: row['비고'] || ''
             }));
 
-            // 사용자 목록 생성
-            const users = [...new Set(projectData.map(item => `${item.이름} (${item.소속})`))];
-            const userSelect = document.getElementById('userSelect');
-            userSelect.innerHTML = '<option value="">선택하세요</option>';
-            users.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user;
-                option.textContent = user;
-                userSelect.appendChild(option);
-            });
-
             document.getElementById('uploadSection').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
 
-            renderProjectTasks();
             renderTaskOverview();
+            filterMyTasks(); // 자동으로 내 테스크 필터링
             
             alert(`${data.length}개의 테스크가 업로드되었습니다!`);
         }
 
         function filterMyTasks() {
-            currentUser = document.getElementById('userSelect').value;
-            if (!currentUser) return;
+            if (!currentUser || projectData.length === 0) return;
 
-            const userName = currentUser.split(' (')[0];
-            const myTasks = projectData.filter(task => task.이름 === userName && task.할당시간 > 0);
+            // 로그인한 사용자의 이름으로 필터링
+            const myTasks = projectData.filter(task => task.이름 === currentUser && task.할당시간 > 0);
 
             const container = document.getElementById('myTasksList');
             container.innerHTML = '';
@@ -571,39 +625,74 @@
                 return;
             }
 
+            // 프로젝트별로 그룹화
+            const projectGroups = {};
             myTasks.forEach(task => {
-                const isScheduled = schedules.some(s => s.taskId === task.id);
-                const scheduledHours = schedules
-                    .filter(s => s.taskId === task.id)
-                    .reduce((sum, s) => sum + calculateHours(s.startTime, s.endTime), 0);
-                
-                const progress = (scheduledHours / task.할당시간) * 100;
+                if (!projectGroups[task.사업명]) {
+                    projectGroups[task.사업명] = [];
+                }
+                projectGroups[task.사업명].push(task);
+            });
 
-                const div = document.createElement('div');
-                div.className = `task-item ${isScheduled ? 'scheduled' : ''}`;
-                div.innerHTML = `
-                    <div class="task-header">
-                        <div>
-                            <div class="task-title">${task.중분류} - ${task.소분류}</div>
-                            <div class="task-meta">
-                                <span class="category-badge">${task.대분류}</span>
-                                <span style="margin-left: 8px;">할당: ${task.할당시간}시간</span>
-                            </div>
-                            ${task.비고 ? `<div class="task-meta">📝 ${task.비고}</div>` : ''}
-                        </div>
-                        ${isScheduled ? '<span class="scheduled-badge">✓ 등록됨</span>' : ''}
-                    </div>
-                    <div class="task-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill ${progress >= 100 ? 'complete' : ''}" style="width: ${Math.min(progress, 100)}%"></div>
-                        </div>
-                        <div class="progress-text">${scheduledHours}h / ${task.할당시간}h (${progress.toFixed(0)}%)</div>
-                    </div>
-                    <button class="schedule-btn" onclick="openScheduleModal('${task.id}')" ${progress >= 100 ? 'disabled' : ''}>
-                        ${progress > 0 ? '추가 등록' : '스케줄 등록'}
-                    </button>
+            // 프로젝트별로 렌더링
+            Object.keys(projectGroups).forEach(projectName => {
+                const projectTasks = projectGroups[projectName];
+                const projectTotalHours = projectTasks.reduce((sum, t) => sum + t.할당시간, 0);
+
+                // 프로젝트 헤더
+                const projectHeader = document.createElement('div');
+                projectHeader.style.cssText = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 15px; border-radius: 8px; margin-bottom: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;';
+                projectHeader.innerHTML = `
+                    <span>📦 ${projectName}</span>
+                    <span style="font-size: 0.9rem; opacity: 0.9;">${projectTasks.length}개 테스크 | ${projectTotalHours}h</span>
                 `;
-                container.appendChild(div);
+                container.appendChild(projectHeader);
+
+                // 테스크 리스트
+                projectTasks.forEach(task => {
+                    const isScheduled = schedules.some(s => s.taskId === task.id);
+                    const scheduledHours = schedules
+                        .filter(s => s.taskId === task.id)
+                        .reduce((sum, s) => sum + calculateHours(s.startTime, s.endTime), 0);
+                    
+                    const progress = (scheduledHours / task.할당시간) * 100;
+
+                    const div = document.createElement('div');
+                    div.className = `task-item ${isScheduled ? 'scheduled' : ''}`;
+                    div.style.marginBottom = '10px';
+                    div.innerHTML = `
+                        <div class="task-header">
+                            <div>
+                                <div class="task-title">${task.중분류}</div>
+                                <div style="margin: 5px 0;">
+                                    <span class="task-category-badge badge-primary">${task.대분류}</span>
+                                    <span class="task-category-badge badge-secondary">${task.중분류}</span>
+                                    <span class="task-category-badge badge-tertiary">${task.소분류}</span>
+                                </div>
+                                <div class="task-meta">
+                                    할당: <strong>${task.할당시간}시간</strong>
+                                </div>
+                                ${task.비고 ? `<div class="task-meta">📝 ${task.비고}</div>` : ''}
+                            </div>
+                            ${isScheduled ? '<span class="scheduled-badge">✓ 등록됨</span>' : ''}
+                        </div>
+                        <div class="task-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill ${progress >= 100 ? 'complete' : ''}" style="width: ${Math.min(progress, 100)}%"></div>
+                            </div>
+                            <div class="progress-text">${scheduledHours}h / ${task.할당시간}h (${progress.toFixed(0)}%)</div>
+                        </div>
+                        <button class="schedule-btn" onclick="openScheduleModal('${task.id}')" ${progress >= 100 ? 'disabled' : ''}>
+                            ${progress > 0 ? '추가 등록' : '스케줄 등록'}
+                        </button>
+                    `;
+                    container.appendChild(div);
+                });
+
+                // 프로젝트 구분선
+                const divider = document.createElement('div');
+                divider.style.cssText = 'height: 20px;';
+                container.appendChild(divider);
             });
 
             // 통계 업데이트
@@ -614,64 +703,32 @@
             document.getElementById('totalHours').textContent = myTasks.reduce((sum, t) => sum + t.할당시간, 0) + 'h';
         }
 
-        function renderProjectTasks() {
-            // 테스크별로 그룹화
-            const taskGroups = {};
-            projectData.forEach(task => {
-                const key = `${task.대분류}-${task.중분류}-${task.소분류}`;
-                if (!taskGroups[key]) {
-                    taskGroups[key] = {
-                        대분류: task.대분류,
-                        중분류: task.중분류,
-                        소분류: task.소분류,
-                        기준시간: task.기준시간,
-                        할당: []
-                    };
-                }
-                if (task.할당시간 > 0) {
-                    taskGroups[key].할당.push({
-                        이름: task.이름,
-                        소속: task.소속,
-                        할당시간: task.할당시간
-                    });
-                }
-            });
-
-            const container = document.getElementById('projectTasksList');
-            container.innerHTML = '';
-
-            Object.values(taskGroups).forEach(group => {
-                const totalAllocated = group.할당.reduce((sum, a) => sum + a.할당시간, 0);
-                const progress = (totalAllocated / group.기준시간) * 100;
-
-                const div = document.createElement('div');
-                div.className = 'task-item';
-                div.innerHTML = `
-                    <div class="task-title">${group.중분류}</div>
-                    <div class="task-meta">
-                        <span class="category-badge">${group.대분류}</span>
-                        <span style="margin-left: 8px;">기준: ${group.기준시간}h</span>
-                    </div>
-                    <div class="task-meta" style="margin-top: 8px;">
-                        👥 ${group.할당.length}명 할당 | ${totalAllocated}h / ${group.기준시간}h
-                    </div>
-                    <div class="task-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill ${progress >= 100 ? 'complete' : ''}" style="width: ${Math.min(progress, 100)}%"></div>
-                        </div>
-                        <div class="progress-text">${progress.toFixed(0)}%</div>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
         function renderTaskOverview() {
-            const taskGroups = {};
+            // 내가 할당된 프로젝트의 테스크만 필터링
+            const myTaskKeys = new Set(
+                projectData
+                    .filter(task => task.이름 === currentUser && task.할당시간 > 0)
+                    .map(task => `${task.사업명}-${task.대분류}-${task.중분류}-${task.소분류}`)
+            );
+
+            // 프로젝트별로 그룹화
+            const projectGroups = {};
             projectData.forEach(task => {
+                const taskKey = `${task.사업명}-${task.대분류}-${task.중분류}-${task.소분류}`;
+                
+                // 내가 참여한 테스크만 표시
+                if (!myTaskKeys.has(taskKey)) return;
+
+                if (!projectGroups[task.사업명]) {
+                    projectGroups[task.사업명] = {
+                        사업명: task.사업명,
+                        테스크목록: {}
+                    };
+                }
+
                 const key = `${task.대분류}-${task.중분류}-${task.소분류}`;
-                if (!taskGroups[key]) {
-                    taskGroups[key] = {
+                if (!projectGroups[task.사업명].테스크목록[key]) {
+                    projectGroups[task.사업명].테스크목록[key] = {
                         대분류: task.대분류,
                         중분류: task.중분류,
                         소분류: task.소분류,
@@ -680,7 +737,7 @@
                     };
                 }
                 if (task.할당시간 > 0) {
-                    taskGroups[key].할당.push({
+                    projectGroups[task.사업명].테스크목록[key].할당.push({
                         이름: task.이름,
                         소속: task.소속,
                         할당시간: task.할당시간
@@ -691,25 +748,87 @@
             const container = document.getElementById('taskOverview');
             container.innerHTML = '';
 
-            Object.values(taskGroups).forEach(group => {
-                const div = document.createElement('div');
-                div.className = 'task-overview-item';
-                div.innerHTML = `
-                    <div class="task-title">${group.중분류} - ${group.소분류}</div>
-                    <div class="task-meta">
-                        <span class="category-badge">${group.대분류}</span>
-                        <span style="margin-left: 8px;">기준: ${group.기준시간}h</span>
+            if (Object.keys(projectGroups).length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 0;">할당된 프로젝트가 없습니다</p>';
+                return;
+            }
+
+            // 프로젝트별로 렌더링
+            Object.values(projectGroups).forEach(project => {
+                const tasks = Object.values(project.테스크목록);
+                const totalTasks = tasks.length;
+                const myTotalHours = tasks.reduce((sum, task) => {
+                    const myAlloc = task.할당.find(a => a.이름 === currentUser);
+                    return sum + (myAlloc ? myAlloc.할당시간 : 0);
+                }, 0);
+
+                // 프로젝트 섹션 생성
+                const projectSection = document.createElement('div');
+                projectSection.className = 'project-section';
+
+                // 프로젝트 헤더
+                const projectHeader = document.createElement('div');
+                projectHeader.className = 'project-header';
+                projectHeader.innerHTML = `
+                    <div>
+                        <div class="project-title">📦 ${project.사업명}</div>
+                        <div style="margin-top: 5px; font-size: 0.85rem; opacity: 0.9;">총 ${totalTasks}개 테스크 참여</div>
                     </div>
-                    <div class="allocation-list">
-                        ${group.할당.map(a => `
-                            <div class="allocation-item">
-                                <span>👤 ${a.이름} (${a.소속})</span>
-                                <span><strong>${a.할당시간}h</strong></span>
-                            </div>
-                        `).join('')}
+                    <div class="project-stats">
+                        내 할당 시간<br>
+                        <span style="font-size: 1.5rem; font-weight: 700;">${myTotalHours}h</span>
                     </div>
                 `;
-                container.appendChild(div);
+
+                // 테스크 그리드
+                const taskGrid = document.createElement('div');
+                taskGrid.className = 'task-overview';
+
+                tasks.forEach(task => {
+                    const totalAllocated = task.할당.reduce((sum, a) => sum + a.할당시간, 0);
+                    const myAllocation = task.할당.find(a => a.이름 === currentUser);
+                    const progress = (totalAllocated / task.기준시간) * 100;
+
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = 'task-overview-item';
+                    taskDiv.innerHTML = `
+                        <div style="margin-bottom: 12px;">
+                            <div class="task-title" style="margin-bottom: 8px;">${task.중분류}</div>
+                            <div>
+                                <span class="task-category-badge badge-primary">${task.대분류}</span>
+                                <span class="task-category-badge badge-secondary">${task.중분류}</span>
+                                <span class="task-category-badge badge-tertiary">${task.소분류}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="task-meta" style="margin-bottom: 10px;">
+                            기준: ${task.기준시간}h | 
+                            내 할당: <strong style="color: var(--primary-blue); font-size: 1.1em;">${myAllocation ? myAllocation.할당시간 : 0}h</strong>
+                        </div>
+
+                        <div class="task-progress" style="margin-bottom: 12px;">
+                            <div class="progress-bar">
+                                <div class="progress-fill ${progress >= 100 ? 'complete' : ''}" style="width: ${Math.min(progress, 100)}%"></div>
+                            </div>
+                            <div class="progress-text">전체 진행: ${totalAllocated}h / ${task.기준시간}h (${progress.toFixed(0)}%)</div>
+                        </div>
+
+                        <div class="allocation-list">
+                            <div style="font-weight: 600; margin-bottom: 5px; color: #475569; font-size: 0.85rem;">👥 팀원 할당</div>
+                            ${task.할당.map(a => `
+                                <div class="allocation-item">
+                                    <span>${a.이름} ${a.이름 === currentUser ? '<span style="color: var(--primary-blue); font-weight: 600;">(나)</span>' : `<span style="color: #94a3b8;">(${a.소속})</span>`}</span>
+                                    <span><strong>${a.할당시간}h</strong></span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    taskGrid.appendChild(taskDiv);
+                });
+
+                projectSection.appendChild(projectHeader);
+                projectSection.appendChild(taskGrid);
+                container.appendChild(projectSection);
             });
         }
 
@@ -717,12 +836,21 @@
             currentEditingTask = projectData.find(t => t.id === taskId);
             
             document.getElementById('taskInfo').innerHTML = `
-                <strong>${currentEditingTask.중분류} - ${currentEditingTask.소분류}</strong>
-                <div style="margin-top: 8px; color: #64748b;">
-                    카테고리: ${currentEditingTask.대분류} | 
-                    할당 시간: <strong>${currentEditingTask.할당시간}시간</strong>
+                <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; color: var(--text-dark);">
+                    📦 ${currentEditingTask.사업명}
                 </div>
-                ${currentEditingTask.비고 ? `<div style="margin-top: 5px; color: #64748b;">📝 ${currentEditingTask.비고}</div>` : ''}
+                <div style="margin-bottom: 12px;">
+                    <span class="task-category-badge badge-primary">${currentEditingTask.대분류}</span>
+                    <span class="task-category-badge badge-secondary">${currentEditingTask.중분류}</span>
+                    <span class="task-category-badge badge-tertiary">${currentEditingTask.소분류}</span>
+                </div>
+                <div style="padding: 10px; background: white; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; margin-bottom: 5px;">${currentEditingTask.중분류}</div>
+                    <div style="color: #64748b; font-size: 0.9rem;">
+                        할당 시간: <strong style="color: var(--primary-blue); font-size: 1.1em;">${currentEditingTask.할당시간}시간</strong>
+                    </div>
+                    ${currentEditingTask.비고 ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); color: #64748b; font-size: 0.85rem;">📝 ${currentEditingTask.비고}</div>` : ''}
+                </div>
             `;
 
             document.getElementById('scheduleModal').classList.add('active');
@@ -752,7 +880,7 @@
 
             const schedule = {
                 taskId: currentEditingTask.id,
-                user: currentUser.split(' (')[0],
+                user: currentUser, // 이미 이름만 저장되어 있음
                 task: currentEditingTask,
                 startDate,
                 endDate,
@@ -780,7 +908,56 @@
 
         function goToCalendar() {
             saveToLocalStorage();
-            window.location.href = 'lego_mockup.html';
+            window.location.href = 'my_calendar.html';
+        }
+
+        // 샘플 데이터 로드
+        function loadSampleData() {
+            const sampleData = [
+                // 프로젝트 A: 전자상거래 플랫폼 구축
+                { 소속: '개발팀', 이름: '김철수', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '상품 관리 API', 기준시간: 40, 할당시간: 24, 비고: '상품 CRUD 및 검색 기능' },
+                { 소속: '개발팀', 이름: '이영희', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '상품 관리 API', 기준시간: 40, 할당시간: 16, 비고: '상품 CRUD 및 검색 기능' },
+                
+                { 소속: '개발팀', 이름: '김철수', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '결제 시스템', 기준시간: 60, 할당시간: 35, 비고: 'PG사 연동 및 결제 처리' },
+                { 소속: '개발팀', 이름: '박지성', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '결제 시스템', 기준시간: 60, 할당시간: 25, 비고: 'PG사 연동 및 결제 처리' },
+                
+                { 소속: '디자인팀', 이름: '박명수', 부서: 'UI/UX', 사업명: '전자상거래 플랫폼', 대분류: '디자인', 중분류: 'UI 디자인', 소분류: '메인 화면', 기준시간: 30, 할당시간: 30, 비고: '메인 페이지 레이아웃' },
+                
+                { 소속: '기획팀', 이름: '정호영', 부서: '서비스기획', 사업명: '전자상거래 플랫폼', 대분류: '기획', 중분류: '요구사항 분석', 소분류: '사용자 시나리오', 기준시간: 20, 할당시간: 20, 비고: '사용자 여정 맵 작성' },
+
+                // 프로젝트 B: 사내 그룹웨어 시스템
+                { 소속: '개발팀', 이름: '김철수', 부서: '백엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: 'DB 설계', 소분류: '조직도 관리', 기준시간: 24, 할당시간: 14, 비고: '조직도 및 권한 DB 설계' },
+                { 소속: '개발팀', 이름: '이영희', 부서: '백엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: 'DB 설계', 소분류: '조직도 관리', 기준시간: 24, 할당시간: 10, 비고: '조직도 및 권한 DB 설계' },
+                
+                { 소속: '개발팀', 이름: '김철수', 부서: '프론트엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: '화면 개발', 소분류: '대시보드', 기준시간: 35, 할당시간: 20, 비고: 'React 기반 대시보드' },
+                { 소속: '개발팀', 이름: '최민수', 부서: '프론트엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: '화면 개발', 소분류: '대시보드', 기준시간: 35, 할당시간: 15, 비고: 'React 기반 대시보드' },
+                
+                { 소속: '디자인팀', 이름: '박명수', 부서: 'UI/UX', 사업명: '사내 그룹웨어', 대분류: '디자인', 중분류: 'UI 디자인', 소분류: '관리자 페이지', 기준시간: 28, 할당시간: 28, 비고: '관리자 인터페이스 디자인' },
+
+                // 프로젝트 C: 모바일 앱 개발
+                { 소속: '개발팀', 이름: '김철수', 부서: '모바일', 사업명: '헬스케어 앱', 대분류: '개발', 중분류: '앱 개발', 소분류: '운동 기록 기능', 기준시간: 48, 할당시간: 28, 비고: 'Flutter 기반 모바일 앱' },
+                { 소속: '개발팀', 이름: '강동원', 부서: '모바일', 사업명: '헬스케어 앱', 대분류: '개발', 중분류: '앱 개발', 소분류: '운동 기록 기능', 기준시간: 48, 할당시간: 20, 비고: 'Flutter 기반 모바일 앱' },
+                
+                { 소속: '개발팀', 이름: '이영희', 부서: '백엔드', 사업명: '헬스케어 앱', 대분류: '개발', 중분류: 'API 개발', 소분류: '건강 데이터 API', 기준시간: 32, 할당시간: 32, 비고: '건강 데이터 수집 및 분석' },
+                
+                { 소속: '디자인팀', 이름: '박명수', 부서: 'UI/UX', 사업명: '헬스케어 앱', 대분류: '디자인', 중분류: 'UI 디자인', 소분류: '앱 메인 화면', 기준시간: 25, 할당시간: 25, 비고: '모바일 UI 디자인' },
+                
+                { 소속: '기획팀', 이름: '정호영', 부서: '서비스기획', 사업명: '헬스케어 앱', 대분류: '기획', 중분류: '서비스 기획', 소분류: '기능 명세', 기준시간: 18, 할당시간: 18, 비고: '앱 기능 명세서 작성' },
+
+                // 프로젝트 D: AI 챗봇 시스템
+                { 소속: '개발팀', 이름: '김철수', 부서: 'AI', 사업명: 'AI 고객 상담 챗봇', 대분류: '개발', 중분류: 'AI 모델 개발', 소분류: '자연어 처리', 기준시간: 56, 할당시간: 30, 비고: 'LLM 기반 챗봇 모델' },
+                { 소속: '개발팀', 이름: '김민재', 부서: 'AI', 사업명: 'AI 고객 상담 챗봇', 대분류: '개발', 중분류: 'AI 모델 개발', 소분류: '자연어 처리', 기준시간: 56, 할당시간: 26, 비고: 'LLM 기반 챗봇 모델' },
+                
+                { 소속: '개발팀', 이름: '이영희', 부서: '백엔드', 사업명: 'AI 고객 상담 챗봇', 대분류: '개발', 중분류: 'API 개발', 소분류: '챗봇 API', 기준시간: 40, 할당시간: 40, 비고: '챗봇 인터페이스 API' },
+
+                // 추가 팀원들
+                { 소속: '개발팀', 이름: '박지성', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '회원 관리 API', 기준시간: 30, 할당시간: 30, 비고: '회원가입, 로그인, 프로필 관리' },
+                { 소속: '개발팀', 이름: '최민수', 부서: '프론트엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: '화면 개발', 소분류: '상품 목록 페이지', 기준시간: 28, 할당시간: 28, 비고: 'Vue.js 기반 상품 리스트' },
+                { 소속: '개발팀', 이름: '강동원', 부서: '모바일', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: '앱 개발', 소분류: '모바일 웹뷰', 기준시간: 22, 할당시간: 22, 비고: '하이브리드 앱 웹뷰' },
+                { 소속: '개발팀', 이름: '김민재', 부서: 'AI', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'AI 개발', 소분류: '상품 추천 시스템', 기준시간: 44, 할당시간: 44, 비고: '협업 필터링 추천' }
+            ];
+
+            processExcelData(sampleData);
         }
 
         // 역할별 헤더 버튼 생성
@@ -822,22 +999,11 @@
                 schedules = data.schedules || [];
                 
                 if (projectData.length > 0) {
-                    // 사용자 목록 복원
-                    const users = [...new Set(projectData.map(item => `${item.이름} (${item.소속})`))];
-                    const userSelect = document.getElementById('userSelect');
-                    userSelect.innerHTML = '<option value="">선택하세요</option>';
-                    users.forEach(user => {
-                        const option = document.createElement('option');
-                        option.value = user;
-                        option.textContent = user;
-                        userSelect.appendChild(option);
-                    });
-
                     document.getElementById('uploadSection').style.display = 'none';
                     document.getElementById('mainContent').style.display = 'block';
                     
-                    renderProjectTasks();
                     renderTaskOverview();
+                    filterMyTasks(); // 자동으로 내 테스크 필터링
                 }
             }
         };
