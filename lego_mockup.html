@@ -74,7 +74,6 @@
         .calendar-grid {
             flex: 1; overflow: auto; display: none;
         }
-        .calendar-grid.active { display: grid; }
         
         /* 주별 뷰 */
         .calendar-grid.week-view {
@@ -86,14 +85,115 @@
         .calendar-grid.month-view {
             grid-template-columns: repeat(7, 1fr);
             grid-template-rows: 45px repeat(5, 120px);
+            position: relative;
+            overflow: visible; /* 툴팁이 밖으로 나오도록 */
+        }
+        
+        /* Active 상태 - 반드시 마지막에 정의 */
+        .calendar-grid.active { display: grid !important; }
+        .calendar-grid.month-view .cell[data-date] {
+            position: relative;
+            z-index: 1;
+            overflow: visible; /* 툴팁이 셀 밖으로 나오도록 */
         }
         
         /* 월별 뷰 일정 표시 */
-        .schedule-indicator { font-size: 0.7rem; margin-top: 8px; line-height: 1.6; }
+        .schedule-indicator { 
+            font-size: 0.7rem; 
+            margin-top: 8px; 
+            line-height: 1.6; 
+            position: relative;
+            overflow: visible;
+        }
         .schedule-indicator .person { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; position: relative; }
         .schedule-indicator .person-name { color: #475569; font-weight: 500; cursor: pointer; }
         .schedule-indicator .person-name:hover { color: var(--primary-blue); text-decoration: underline; }
         .schedule-indicator .task-dots { display: inline-flex; gap: 3px; margin-left: 2px; }
+        
+        /* 월별 뷰 연속 테스크 바 */
+        .month-task-bar {
+            position: absolute;
+            height: 22px;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            border-left: 3px solid;
+            transition: 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            pointer-events: auto;
+        }
+        .month-task-bar:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10000;
+            overflow: visible;
+        }
+        
+        /* 같은 테스크 하이라이트 효과 */
+        .month-task-bar.same-task-highlight {
+            outline: 3px solid #2563eb;
+            outline-offset: 2px;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+            z-index: 999;
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+        
+        /* 월별 뷰 테스크 바 툴팁 */
+        .month-task-tooltip {
+            display: none;
+            position: absolute;
+            left: 50%;
+            bottom: calc(100% + 8px); /* 테스크 바 바로 위 */
+            transform: translateX(-50%);
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 200px;
+            max-width: 300px;
+            z-index: 99999 !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            white-space: normal;
+            pointer-events: none;
+        }
+        .month-task-bar:hover .month-task-tooltip {
+            display: block;
+        }
+        .month-task-tooltip strong {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+            font-size: 0.85rem;
+        }
+        .month-task-tooltip div {
+            margin-bottom: 4px;
+            color: #64748b;
+        }
+        .month-task-bar.blue { 
+            background: var(--task-blue-bg); 
+            color: var(--task-blue-text); 
+            border-left-color: var(--task-blue-border); 
+        }
+        .month-task-bar.green { 
+            background: var(--task-green-bg); 
+            color: var(--task-green-text); 
+            border-left-color: var(--task-green-border); 
+        }
+        .month-task-bar.yellow { 
+            background: var(--task-yellow-bg); 
+            color: var(--task-yellow-text); 
+            border-left-color: var(--task-yellow-border); 
+        }
         
         /* 사람별 업무 툴팁 */
         .task-tooltip {
@@ -273,8 +373,8 @@
             <div class="toolbar">
                 <div style="display: flex; align-items: center;">
                     <div class="view-switch">
-                        <button onclick="changeView(this)">월 (Month)</button>
-                        <button class="active" onclick="changeView(this)">주 (Week)</button>
+                        <button class="active" onclick="changeView(this)">월 (Month)</button>
+                        <button onclick="changeView(this)">주 (Week)</button>
                         <button onclick="changeView(this)">일 (Day)</button>
                     </div>
                     <div class="legend-wrapper">
@@ -286,9 +386,9 @@
                             <div class="legend-item"><div class="dot" style="background:var(--task-yellow-border)"></div> 디자인 (Design)</div>
                             <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#64748b;line-height:1.4;">
                                 * 한 사람이 여러 소분류 업무를 수행할 수 있습니다.
-                            </div>
                         </div>
                     </div>
+                </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:12px;">
                     <button id="prev-btn" onclick="navigate(-1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;">◀</button>
@@ -298,12 +398,12 @@
             </div>
 
             <!-- 주별 뷰 (Week View) - 동적 생성됨 -->
-            <div class="calendar-grid week-view active" id="week-view-grid">
+            <div class="calendar-grid week-view" id="week-view-grid">
                 <!-- JavaScript로 동적 생성 -->
             </div>
 
             <!-- 월별 뷰 (Month View) - 동적 생성됨 -->
-            <div class="calendar-grid month-view" id="month-view-grid">
+            <div class="calendar-grid month-view active" id="month-view-grid">
                 <!-- JavaScript로 동적 생성 -->
             </div>
 
@@ -606,6 +706,18 @@
                 });
             });
             
+            // 월별 뷰의 테스크 바 필터링
+            document.querySelectorAll('.month-task-bar').forEach(bar => {
+                const classList = Array.from(bar.classList);
+                const userClass = classList.find(c => c.startsWith('user-'));
+                
+                if (userClass && activeUsers.includes(userClass)) {
+                    bar.style.display = 'flex';
+                } else if (userClass) {
+                    bar.style.display = 'none';
+                }
+            });
+            
             // 월별 뷰의 사람별 일정 표시 필터링
             document.querySelectorAll('.month-view .person').forEach(person => {
                 const classList = Array.from(person.classList);
@@ -772,9 +884,6 @@
             
             // 월별 뷰 재생성
             generateMonthView(currentYear, currentMonth);
-            
-            // 툴팁 재생성
-            generateTooltipsForMonthView();
             
             // 필터 동기화
             syncCalendar();
@@ -1252,6 +1361,93 @@
         }
         
         // ============================================
+        // 📅 월별 뷰 헬퍼 함수
+        // ============================================
+        
+        /**
+         * 한 달 전체의 연속된 테스크 구간을 찾습니다
+         * @param {number} year - 연도
+         * @param {number} month - 월
+         * @returns {Array} 연속된 테스크 구간 배열
+         */
+        function findContinuousTaskRanges(year, month) {
+            const ranges = [];
+            const lastDate = new Date(year, month, 0).getDate();
+            
+            // 모든 날짜의 스케줄 수집
+            const allSchedules = [];
+            for (let date = 1; date <= lastDate; date++) {
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                const daySchedules = getScheduleByDate(dateStr);
+                
+                daySchedules.forEach(schedule => {
+                    allSchedules.push({
+                        ...schedule,
+                        date: date,
+                        dateStr: dateStr
+                    });
+                });
+            }
+            
+            // 사람-테스크별로 그룹화
+            const taskGroups = {};
+            allSchedules.forEach(schedule => {
+                const key = `${schedule.user}-${schedule.taskId}`;
+                if (!taskGroups[key]) {
+                    taskGroups[key] = [];
+                }
+                taskGroups[key].push(schedule);
+            });
+            
+            // 각 그룹에서 연속된 날짜 구간 찾기
+            Object.values(taskGroups).forEach(group => {
+                // 날짜순 정렬
+                group.sort((a, b) => a.date - b.date);
+                
+                let rangeStart = group[0];
+                let rangeEnd = group[0];
+                
+                for (let i = 1; i < group.length; i++) {
+                    if (group[i].date === rangeEnd.date + 1) {
+                        // 연속된 날짜
+                        rangeEnd = group[i];
+                    } else {
+                        // 끊김 - 현재 범위 저장하고 새로 시작
+                        ranges.push({
+                            user: rangeStart.user,
+                            taskId: rangeStart.taskId,
+                            category: rangeStart.category,
+                            title: rangeStart.title,
+                            startDate: rangeStart.date,
+                            endDate: rangeEnd.date,
+                            startDateStr: rangeStart.dateStr,
+                            endDateStr: rangeEnd.dateStr,
+                            totalHours: rangeStart.totalHours
+                        });
+                        
+                        rangeStart = group[i];
+                        rangeEnd = group[i];
+                    }
+                }
+                
+                // 마지막 범위 저장
+                ranges.push({
+                    user: rangeStart.user,
+                    taskId: rangeStart.taskId,
+                    category: rangeStart.category,
+                    title: rangeStart.title,
+                    startDate: rangeStart.date,
+                    endDate: rangeEnd.date,
+                    startDateStr: rangeStart.dateStr,
+                    endDateStr: rangeEnd.dateStr,
+                    totalHours: rangeStart.totalHours
+                });
+            });
+            
+            return ranges;
+        }
+        
+        // ============================================
         // 📅 월별 뷰 동적 생성
         // ============================================
         
@@ -1296,49 +1492,25 @@
                 cellCount++;
             }
             
-            // 현재 달 날짜들
+            // 연속된 테스크 구간 찾기
+            const taskRanges = findContinuousTaskRanges(year, month);
+            console.log('📊 연속된 테스크 구간:', taskRanges);
+            
+            // 현재 달 날짜들 - 간단한 날짜 셀만 생성
             for (let date = 1; date <= lastDate; date++) {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
                 const dayOfWeek = (firstDayOfWeek + date - 1) % 7;
                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
                 const weekendStyle = isWeekend ? 'background:#fafafa;' : '';
                 
-                const schedules = getScheduleSummaryByDate(dateStr);
-                const hasSchedule = Object.keys(schedules).length > 0;
+                const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+                const dayName = dayNames[dayOfWeek];
                 
-                if (hasSchedule) {
-                    // 일정이 있는 날짜
-                    const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
-                    const dayName = dayNames[dayOfWeek];
-                    
-                    dateHTML += `<div class="cell" data-date="${dateStr}" onclick="goToDayView('${year}년 ${month}월 ${date}일 (${dayName})', event)" style="${weekendStyle}display:flex;flex-direction:column;align-items:start;padding:8px;">`;
-                    dateHTML += `<div style="font-weight:600;">${date}</div>`;
-                    dateHTML += `<div class="schedule-indicator">`;
-                    
-                    // 각 사용자별로 출력
-                    for (const [userId, userSchedule] of Object.entries(schedules)) {
-                        dateHTML += `<div class="person ${userId}">`;
-                        dateHTML += `<span class="person-name">${userSchedule.userName}</span>`;
-                        dateHTML += `<span class="task-dots">`;
-                        
-                        // 각 카테고리의 점 출력
-                        userSchedule.categories.forEach(cat => {
-                            dateHTML += `<span style="color:${cat.colorCode};">●</span>`;
-                        });
-                        
-                        dateHTML += `</span>`;
-                        dateHTML += `</div>`;
-                    }
-                    
-                    dateHTML += `</div></div>`;
-                } else {
-                    // 일정이 없는 날짜
-                    if (isWeekend) {
-                        dateHTML += `<div class="cell" style="${weekendStyle}display:flex;align-items:start;padding:8px;">${date}</div>`;
-                    } else {
-                        dateHTML += `<div class="cell" data-date="${dateStr}" onclick="goToDayView('${year}년 ${month}월 ${date}일', event)" style="display:flex;align-items:start;padding:8px;">${date}</div>`;
-                    }
-                }
+                // 간단한 날짜 셀 (테스크 바는 나중에 추가)
+                dateHTML += `<div class="cell" data-date="${dateStr}" data-cell-index="${cellCount}" onclick="goToDayView('${year}년 ${month}월 ${date}일 (${dayName})', event)" style="${weekendStyle}display:flex;flex-direction:column;align-items:start;padding:8px;position:relative;">`;
+                dateHTML += `<div style="font-weight:600;">${date}</div>`;
+                dateHTML += `<div class="schedule-indicator" id="schedule-${dateStr}"></div>`;
+                dateHTML += `</div>`;
                 cellCount++;
             }
             
@@ -1349,6 +1521,167 @@
             }
             
             monthGrid.innerHTML += dateHTML;
+            
+            // ============================================
+            // 연속된 테스크 바 렌더링 (DOM 렌더링 후)
+            // ============================================
+            
+            // DOM이 렌더링된 후 테스크 바 추가
+            setTimeout(() => {
+                const gridElement = monthGrid;
+                const firstDateCell = gridElement.querySelector('.cell[data-date]');
+                if (!firstDateCell) return;
+                
+                // 셀 크기 계산
+                const cellWidth = firstDateCell.offsetWidth;
+                const cellHeight = firstDateCell.offsetHeight;
+                const gridRect = gridElement.getBoundingClientRect();
+                
+                console.log('📐 셀 크기:', { cellWidth, cellHeight });
+                
+                // 전체 테스크를 대상으로 레이어 관리 (사용자 구분 없이)
+                const allTaskLayers = []; // [{ row: 0, occupiedCells: [0,1,2] }, ...]
+                
+                taskRanges.forEach(range => {
+                const category = CATEGORIES[range.category];
+                const user = USERS[range.user];
+                
+                if (!user || !category) return;
+                
+                // 시작 날짜의 셀 인덱스 계산
+                const startCellIndex = firstDayOfWeek + range.startDate - 1;
+                const endCellIndex = firstDayOfWeek + range.endDate - 1;
+                const duration = range.endDate - range.startDate + 1;
+                
+                // 주(row) 계산
+                const startRow = Math.floor(startCellIndex / 7);
+                const endRow = Math.floor(endCellIndex / 7);
+                
+                // 같은 주 내에서만 바를 그림 (주를 넘어가면 여러 개로 분할)
+                for (let currentRow = startRow; currentRow <= endRow; currentRow++) {
+                    const rowStartIndex = currentRow * 7;
+                    const rowEndIndex = rowStartIndex + 6;
+                    
+                    const barStartIndex = Math.max(startCellIndex, rowStartIndex);
+                    const barEndIndex = Math.min(endCellIndex, rowEndIndex);
+                    
+                    const barStartCol = barStartIndex % 7;
+                    const barEndCol = barEndIndex % 7;
+                    const barSpan = barEndCol - barStartCol + 1;
+                    
+                    // 현재 row에서 사용 가능한 y 위치 찾기 (전체 레이어 대상)
+                    let layerIndex = 0;
+                    let foundLayer = false;
+                    
+                    // 모든 레이어를 순회하며 사용 가능한 레이어 찾기
+                    for (let i = 0; i < allTaskLayers.length; i++) {
+                        const layer = allTaskLayers[i];
+                        
+                        // 다른 row는 무조건 겹치지 않음
+                        if (layer.row !== currentRow) continue;
+                        
+                        // 현재 레이어에 겹치는 셀이 있는지 확인
+                        let hasConflict = false;
+                        for (let cellIndex = barStartIndex; cellIndex <= barEndIndex; cellIndex++) {
+                            if (layer.occupiedCells.includes(cellIndex)) {
+                                hasConflict = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!hasConflict) {
+                            // 이 레이어 사용 가능 - 셀 인덱스 추가
+                            layerIndex = i;
+                            foundLayer = true;
+                            for (let cellIndex = barStartIndex; cellIndex <= barEndIndex; cellIndex++) {
+                                layer.occupiedCells.push(cellIndex);
+                            }
+                            break;
+                        }
+                    }
+                    
+                    if (!foundLayer) {
+                        // 새 레이어 생성
+                        layerIndex = allTaskLayers.length;
+                        const occupiedCells = [];
+                        for (let cellIndex = barStartIndex; cellIndex <= barEndIndex; cellIndex++) {
+                            occupiedCells.push(cellIndex);
+                        }
+                        allTaskLayers.push({
+                            row: currentRow,
+                            occupiedCells: occupiedCells
+                        });
+                    }
+                    
+                    // 테스크 바 HTML 생성 - Grid에 직접 추가
+                    const barStartDate = Math.max(range.startDate, barStartIndex - firstDayOfWeek + 1);
+                    const barEndDate = Math.min(range.endDate, barEndIndex - firstDayOfWeek + 1);
+                    
+                    const taskBar = document.createElement('div');
+                    taskBar.className = `month-task-bar ${category.color} ${range.user}`;
+                    taskBar.setAttribute('data-task-id', range.taskId); // 같은 테스크 식별용
+                    
+                    // 픽셀 기반 위치 계산
+                    // 헤더 행(45px) + 현재 주 행까지의 높이
+                    const topPosition = 45 + (currentRow * cellHeight) + 24 + (layerIndex * 24);
+                    const leftPosition = barStartCol * cellWidth + 4;
+                    const barWidth = (barSpan * cellWidth) - 8;
+                    
+                    taskBar.style.top = `${topPosition}px`;
+                    taskBar.style.left = `${leftPosition}px`;
+                    taskBar.style.width = `${barWidth}px`;
+                    
+                    const daysText = barSpan > 1 ? ` (${barSpan}일)` : '';
+                    taskBar.textContent = `${user.name}: ${range.title}${daysText}`;
+                    
+                    // 커스텀 툴팁 추가
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'month-task-tooltip';
+                    tooltip.innerHTML = `
+                        <strong>${category.name} - ${range.title}</strong>
+                        <div>👤 담당: ${user.name}</div>
+                        <div>📅 기간: ${barStartDate}일 ~ ${barEndDate}일 (${barSpan}일)</div>
+                        <div>⏱️ 총 시간: ${range.totalHours || 0}시간</div>
+                    `;
+                    taskBar.appendChild(tooltip);
+                    
+                    // 클릭 이벤트 방지 (셀로 이동하지 않도록)
+                    taskBar.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                    });
+                    
+                    // 같은 테스크 하이라이트
+                    taskBar.addEventListener('mouseenter', function() {
+                        // 같은 task_id를 가진 모든 테스크 바 하이라이트
+                        const taskId = this.getAttribute('data-task-id');
+                        console.log('🎯 호버한 테스크 ID:', taskId); // 디버깅용
+                        
+                        document.querySelectorAll('.month-task-bar').forEach(bar => {
+                            const barTaskId = bar.getAttribute('data-task-id');
+                            if (barTaskId === taskId) {
+                                bar.classList.add('same-task-highlight');
+                                console.log('✅ 하이라이트 추가:', barTaskId);
+                            }
+                        });
+                    });
+                    
+                    taskBar.addEventListener('mouseleave', function() {
+                        // 모든 하이라이트 제거
+                        document.querySelectorAll('.month-task-bar').forEach(bar => {
+                            bar.classList.remove('same-task-highlight');
+                        });
+                    });
+                    
+                    gridElement.appendChild(taskBar);
+                    console.log(`📍 테스크 바 추가: ${range.title}, row:${currentRow}, col:${barStartCol}-${barEndCol}, top:${topPosition}, left:${leftPosition}, width:${barWidth}`);
+                }
+                });
+                
+                console.log('✅ 월별 뷰 테스크 바 렌더링 완료:', taskRanges.length);
+            }, 100);  // DOM 렌더링 대기
+            
+            console.log('✅ 월별 뷰 생성 완료');
         }
         
         // ============================================
@@ -1417,28 +1750,23 @@
             generateMonthView(2023, 3);
             console.log('✅ 월별 뷰 생성 완료!');
             
-            // 2. 월별 뷰 툴팁 자동 생성
-            generateTooltipsForMonthView();
-            console.log('✅ 월별 뷰 툴팁 자동 생성 완료!');
-            
-            // 3. 주별 뷰 생성 (기본: 2/27~3/3 주)
+            // 2. 주별 뷰 생성 (기본: 2/27~3/3 주)
             generateWeekView();
             console.log('✅ 주별 뷰 생성 완료!');
             
-            // 4. 일별 뷰 생성 (기본: 3월 1일)
+            // 3. 일별 뷰 생성 (기본: 3월 1일)
             generateDayView();
             console.log('✅ 일별 뷰 생성 완료!');
             
-            // 5. 초기 네비게이션 버튼 표시 및 날짜 업데이트 (주별 뷰가 기본)
+            // 4. 초기 네비게이션 버튼 표시 (월별 뷰가 기본)
             document.getElementById('prev-btn').style.display = 'block';
             document.getElementById('next-btn').style.display = 'block';
-            const startDate = new Date(currentWeekDates[0]);
-            const endDate = new Date(currentWeekDates[4]);
-            const startMonth = startDate.getMonth() + 1;
-            const startDay = startDate.getDate();
-            const endMonth = endDate.getMonth() + 1;
-            const endDay = endDate.getDate();
-            document.getElementById('current-date-display').textContent = `${startMonth}/${startDay} - ${endMonth}/${endDay}`;
+            
+            // 5. 초기 필터 적용 (월별 뷰의 테스크 바도 포함)
+            setTimeout(() => {
+                syncCalendar();
+                console.log('✅ 초기 필터 적용 완료!');
+            }, 200); // 월별 뷰 테스크 바 생성 후 적용
             
             console.log('🎉 모든 뷰 초기화 완료!');
         });
