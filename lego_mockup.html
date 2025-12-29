@@ -167,8 +167,8 @@
             z-index: 1;
         }
         .task:hover {
+            /* 호버 효과는 유지하되 툴팁은 JavaScript로만 제어 */
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000 !important;
             overflow: visible;
         }
         .task-content-wrapper {
@@ -214,7 +214,7 @@
             white-space: normal;
             pointer-events: none;
         }
-        .task:hover .task-detail-tooltip,
+        /* 툴팁은 JavaScript로만 제어 (CSS 호버 제거하여 깜빡임 방지) */
         .task .task-detail-tooltip.force-show { 
             display: block !important;
         }
@@ -996,7 +996,7 @@
                             const cellHeight = Math.min(80 - 5, remainingHeight);
                             
                             // 투명한 호버 영역 - 셀 전체 높이를 차지
-                            cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 0; bottom: 0; z-index: 100; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
+                            cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 8px); right: calc(${rightPercent}% + 8px); width: auto; top: 0; bottom: 0; z-index: 100; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
                         });
                     }
                     
@@ -1014,7 +1014,46 @@
         function setupScheduleHoverEvents() {
             console.log('🔧 호버 이벤트 설정 중...');
             
-            // 모든 호버 영역에 직접 이벤트 리스너 추가
+            // 1. Task 블록 자체에 호버 이벤트 추가
+            const taskBlocks = document.querySelectorAll('.task[data-schedule-id]');
+            console.log(`발견된 Task 블록: ${taskBlocks.length}개`);
+            
+            taskBlocks.forEach((taskBlock, index) => {
+                const scheduleId = taskBlock.getAttribute('data-schedule-id');
+                console.log(`Task 블록 ${index}: ${scheduleId}`);
+                
+                if (!scheduleId) return;
+                
+                // 마우스 올렸을 때
+                taskBlock.onmouseenter = function() {
+                    console.log(`🖱️ [Task 블록] 호버 진입: ${scheduleId}`);
+                    
+                    // z-index 상승
+                    this.style.zIndex = '10000';
+                    
+                    const tooltip = this.querySelector('.task-detail-tooltip');
+                    if (tooltip) {
+                        tooltip.classList.add('force-show');
+                        console.log('✅ 툴팁 표시');
+                    }
+                };
+                
+                // 마우스 떠났을 때
+                taskBlock.onmouseleave = function() {
+                    console.log(`🖱️ [Task 블록] 호버 이탈: ${scheduleId}`);
+                    
+                    // z-index 복구
+                    this.style.zIndex = '1';
+                    
+                    const tooltip = this.querySelector('.task-detail-tooltip');
+                    if (tooltip) {
+                        tooltip.classList.remove('force-show');
+                        console.log('❌ 툴팁 숨김');
+                    }
+                };
+            });
+            
+            // 2. 호버 영역에 직접 이벤트 리스너 추가
             const hoverAreas = document.querySelectorAll('.task-hover-area');
             console.log(`발견된 호버 영역: ${hoverAreas.length}개`);
             
@@ -1116,8 +1155,8 @@
                         const durationHours = endHour - startHour;
                         const height = durationHours * 80 - 20;
                         
-                        // 고유 일정 ID 생성
-                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${schedule.startDate}-${schedule.startTime.replace(':', '')}`;
+                        // 고유 일정 ID 생성 (현재 날짜 기준)
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
                         
                         // 컬럼 분할: 동일한 너비로 나눔
                         const widthPercent = 100 / columnCount;
@@ -1148,8 +1187,9 @@
                         const durationHours = endHour - startHour;
                         const height = durationHours * 80 - 20;
                         
-                        // 고유 일정 ID 생성
-                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${schedule.startDate}-${schedule.startTime.replace(':', '')}`;
+                        // 고유 일정 ID 생성 (현재 날짜 기준)
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
+                        console.log(`✅ [일별] 시작 블록 생성 - ID: ${scheduleId}, 날짜: ${dateStr}, 시간: ${hour}`);
                         
                         const note = schedule.note ? `<br><small style="opacity:0.7;">${schedule.note}</small>` : '';
                         const noteText = schedule.note ? schedule.note : '';
@@ -1184,12 +1224,13 @@
                     });
                     
                     middleSchedules.forEach(schedule => {
-                        // 고유 일정 ID 생성
-                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${schedule.startDate}-${schedule.startTime.replace(':', '')}`;
+                        // 고유 일정 ID 생성 (현재 날짜 기준)
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
+                        console.log(`🔴 [일별] 호버 영역 생성 - ID: ${scheduleId}, 날짜: ${dateStr}, 시간: ${hour}`);
                         
                         // 이 일정이 전체 진행 중인 일정 중 몇 번째인지 찾기
                         const scheduleIndex = allOngoingSchedules.findIndex(s => 
-                            s.user === schedule.user && s.startTime === schedule.startTime
+                            s.taskId === schedule.taskId && s.user === schedule.user && s.startTime === schedule.startTime
                         );
                         
                         // 컬럼 위치 계산 (시작 시간과 동일한 위치)
