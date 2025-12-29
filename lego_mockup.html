@@ -49,6 +49,7 @@
         .toolbar {
             padding: 15px 20px; display: flex; justify-content: space-between;
             align-items: center; border-bottom: 1px solid var(--border-color);
+            position: relative; z-index: 100002;
         }
 
         .view-switch { display: flex; background: #f1f5f9; padding: 4px; border-radius: 8px; }
@@ -58,12 +59,12 @@
         }
         .view-switch button.active { background: white; color: var(--text-dark); box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: 600; }
 
-        .legend-wrapper { position: relative; margin-left: 10px; }
+        .legend-wrapper { position: relative; margin-left: 10px; z-index: 100001; }
         .legend-btn { background: #f1f5f9; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
         .legend-popup {
             display: none; position: absolute; top: 40px; left: 0;
             background: white; border: 1px solid var(--border-color);
-            border-radius: 10px; padding: 15px; width: 220px; z-index: 100;
+            border-radius: 10px; padding: 15px; width: 220px; z-index: 100000 !important;
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
         }
         .legend-wrapper:hover .legend-popup { display: block; }
@@ -830,15 +831,79 @@
         }
 
         // 날짜 클릭 시 일별 뷰로 전환
+        // 주별 뷰로 이동 (특정 날짜가 속한 주)
+        function goToWeekView(targetDate) {
+            // 해당 날짜가 속한 주의 월요일 찾기
+            const date = new Date(targetDate);
+            const day = date.getDay(); // 0(일) ~ 6(토)
+            const mondayOffset = day === 0 ? -6 : 1 - day; // 월요일까지의 거리
+            const monday = new Date(date);
+            monday.setDate(date.getDate() + mondayOffset);
+            
+            // 해당 주의 날짜 배열 생성 (월~금)
+            const weekDates = [];
+            for (let i = 0; i < 5; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                weekDates.push(dateStr);
+            }
+            
+            // 현재 주 업데이트
+            currentWeekDates = weekDates;
+            
+            // 주별 뷰 재생성
+            generateWeekView(weekDates);
+            
+            // 모든 뷰 숨기기
+            document.querySelectorAll('.calendar-grid').forEach(grid => {
+                grid.classList.remove('active');
+            });
+            
+            // 주별 뷰 표시
+            document.querySelector('.week-view').classList.add('active');
+            
+            // 버튼 활성화 상태 변경
+            document.querySelectorAll('.view-switch button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-switch button')[1].classList.add('active'); // 주별 버튼
+            
+            // 상단 날짜 표시 업데이트
+            const startDate = new Date(weekDates[0]);
+            const endDate = new Date(weekDates[4]);
+            const startMonth = startDate.getMonth() + 1;
+            const startDay = startDate.getDate();
+            const endMonth = endDate.getMonth() + 1;
+            const endDay = endDate.getDate();
+            document.getElementById('current-date-display').textContent = `${startMonth}/${startDay} - ${endMonth}/${endDay}`;
+            
+            // 필터 동기화
+            syncCalendar();
+            
+            console.log('📅 주별 뷰로 이동:', weekDates);
+        }
+        
         function goToDayView(dateString, event) {
             // 선택된 날짜 표시 (이전 선택 해제)
             document.querySelectorAll('.month-view .cell.selected').forEach(cell => {
                 cell.classList.remove('selected');
             });
-            event.currentTarget.classList.add('selected');
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('selected');
+            }
             
             // 날짜 데이터 추출 (data-date 속성에서)
-            const dateStr = event.currentTarget.getAttribute('data-date');
+            let dateStr;
+            if (event && event.currentTarget) {
+                dateStr = event.currentTarget.getAttribute('data-date');
+            } else if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // dateString이 이미 YYYY-MM-DD 형식인 경우
+                dateStr = dateString;
+                const date = new Date(dateStr);
+                const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+                dateString = `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 (${dayNames[date.getDay()]})`;
+            } else {
+                dateStr = event ? event.currentTarget.getAttribute('data-date') : dateString;
+            }
             
             // 상단 툴바 날짜 업데이트 (요일 제외)
             const shortDate = dateString.replace(/\s*\([^)]*\)/, '');
@@ -1028,7 +1093,7 @@
                                 ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                             </div>`;
                             
-                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" data-date="${dateStr}" onclick="goToDayView('${dateStr}')" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; cursor: pointer; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                         });
                     } else {
                         // 겹치지 않는 경우 - 전체 너비 사용
@@ -1056,7 +1121,7 @@
                                 ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                             </div>`;
                             
-                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" data-date="${dateStr}" onclick="goToDayView('${dateStr}')" style="height: ${height}px; cursor: pointer;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                         });
                     }
                     
@@ -1645,10 +1710,14 @@
                     `;
                     taskBar.appendChild(tooltip);
                     
-                    // 클릭 이벤트 방지 (셀로 이동하지 않도록)
+                    // 클릭 시 주별 뷰로 이동
                     taskBar.addEventListener('click', (e) => {
                         e.stopPropagation();
                         e.preventDefault();
+                        
+                        // 테스크 시작 날짜로 주별 뷰 이동
+                        const startDate = new Date(range.startDateStr);
+                        goToWeekView(startDate);
                     });
                     
                     // 같은 테스크 하이라이트
