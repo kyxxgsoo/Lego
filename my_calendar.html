@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 캘린더 - Lego</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        :root {
+            --bg-gray: #f4f6f8;
+            --border-color: #e5e7eb;
+            --primary-blue: #2563eb;
+            --text-dark: #1e293b;
+            --task-blue-bg: #dbeafe; --task-blue-text: #1e40af; --task-blue-border: #3b82f6;
+            --task-green-bg: #dcfce7; --task-green-text: #166534; --task-green-border: #22c55e;
+            --task-yellow-bg: #fef9c3; --task-yellow-text: #854d0e; --task-yellow-border: #eab308;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-gray);
+            margin: 0; padding: 0;
+            color: var(--text-dark);
+            height: 100vh; display: flex; flex-direction: column;
+        }
+
+        /* --- Header Navigation --- */
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .nav-left h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--primary-blue);
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-menu-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-menu-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        .nav-menu-btn.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-dark);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            padding: 25px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* --- Filter Bar --- */
+        .filter-bar {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 15px 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .filter-group select {
+            padding: 6px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* --- Main Layout: Calendar + Schedule List --- */
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            gap: 15px;
+            overflow: hidden;
+        }
+
+        .calendar-section {
+            flex: 2;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .schedule-list-section {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .schedule-list-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .schedule-list-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .schedule-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .schedule-item:hover {
+            background: var(--bg-gray);
+            border-color: var(--border-color);
+        }
+
+        .schedule-item.selected {
+            background: #eff6ff;
+            border-color: var(--primary-blue);
+        }
+
+        .schedule-number {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .schedule-number.blue {
+            background: var(--task-blue-border);
+            color: white;
+        }
+
+        .schedule-number.green {
+            background: var(--task-green-border);
+            color: white;
+        }
+
+        .schedule-number.yellow {
+            background: var(--task-yellow-border);
+            color: white;
+        }
+
+        .schedule-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .schedule-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .schedule-time {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        /* --- Detail Panel --- */
+        .detail-panel {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: none;
+        }
+
+        .detail-panel.show {
+            display: block;
+        }
+
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            width: 120px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            flex: 1;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+        }
+
+        .close-detail-btn {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #94a3b8;
+            line-height: 1;
+            padding: 0;
+            margin-top: -5px;
+        }
+
+        .close-detail-btn:hover {
+            color: var(--text-dark);
+        }
+
+        /* --- Calendar Styles --- */
+        .toolbar {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            z-index: 100002;
+        }
+
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-button {
+            background: white;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-dark);
+            transition: all 0.2s;
+        }
+
+        .nav-button:hover {
+            background: var(--bg-gray);
+        }
+
+        .current-date {
+            font-size: 1.1rem;
+            font-weight: 600;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .view-switch {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .view-switch button {
+            border: none;
+            background: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .view-switch button.active {
+            background: white;
+            color: var(--text-dark);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-weight: 600;
+        }
+
+        .legend-wrapper {
+            position: relative;
+            margin-left: 10px;
+            z-index: 100001;
+        }
+
+        .legend-btn {
+            background: #f1f5f9;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .legend-popup {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            width: 220px;
+            z-index: 100000 !important;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+
+        .legend-wrapper:hover .legend-popup {
+            display: block;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* --- Calendar Grid --- */
+        .calendar-grid {
+            flex: 1;
+            overflow: auto;
+            display: none;
+        }
+        
+        .calendar-grid.week-view {
+            grid-template-columns: 80px repeat(5, 1fr);
+            grid-template-rows: 45px repeat(10, 80px);
+        }
+        
+        .calendar-grid.month-view {
+            grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: 45px repeat(5, 120px);
+            position: relative;
+            overflow: visible;
+        }
+        
+        .calendar-grid.active {
+            display: grid !important;
+        }
+
+        .calendar-grid.month-view .cell[data-date] {
+            position: relative;
+            z-index: 1;
+            overflow: visible;
+        }
+
+        .calendar-grid.day-view {
+            grid-template-columns: 80px 1fr;
+            grid-template-rows: 45px repeat(24, 60px);
+        }
+
+        .cell {
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .cell-header {
+            background: #fafafa;
+            font-weight: 600;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+
+        .time-label {
+            background: #fafafa;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .week-view .cell:not(.cell-header):not(.time-label),
+        .day-view .cell:not(.cell-header):not(.time-label) {
+            overflow: visible;
+        }
+
+        .month-view-cell {
+            min-height: 120px;
+            padding: 8px;
+            vertical-align: top;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .month-view-cell .date-number {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .schedule-indicator {
+            margin-top: 5px;
+            overflow: visible;
+        }
+
+        .task {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            min-height: 20px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 1;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border-left: 4px solid;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .task:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: visible;
+        }
+
+        .task.blue {
+            background: var(--task-blue-bg);
+            color: var(--task-blue-text);
+            border-left-color: var(--task-blue-border);
+        }
+
+        .task.green {
+            background: var(--task-green-bg);
+            color: var(--task-green-text);
+            border-left-color: var(--task-green-border);
+        }
+
+        .task.yellow {
+            background: var(--task-yellow-bg);
+            color: var(--task-yellow-text);
+            border-left-color: var(--task-yellow-border);
+        }
+
+        .task-content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+
+        .task-detail-tooltip {
+            display: none;
+            position: absolute;
+            left: 50%;
+            bottom: 100%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 200px;
+            max-width: 300px;
+            z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            white-space: normal;
+            pointer-events: none;
+        }
+
+        .task-detail-tooltip.force-show {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            z-index: 10000 !important;
+        }
+
+        .task-hover-area {
+            background: rgba(255,0,0,0);
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        .month-task-bar {
+            position: absolute;
+            height: 22px;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            border-left: 3px solid;
+            transition: 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 10000;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .month-task-bar.blue {
+            background: var(--task-blue-bg);
+            color: var(--task-blue-text);
+            border-left-color: var(--task-blue-border);
+        }
+
+        .month-task-bar.green {
+            background: var(--task-green-bg);
+            color: var(--task-green-text);
+            border-left-color: var(--task-green-border);
+        }
+
+        .month-task-bar.yellow {
+            background: var(--task-yellow-bg);
+            color: var(--task-yellow-text);
+            border-left-color: var(--task-yellow-border);
+        }
+
+        .month-task-bar.same-task-highlight {
+            outline: 3px solid var(--primary-blue);
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
+            transform: scale(1.02);
+            z-index: 10001;
+        }
+
+        .month-task-tooltip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+            min-width: 180px;
+            max-width: 250px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 0.75rem;
+            line-height: 1.4;
+            white-space: normal;
+            z-index: 99999;
+            pointer-events: none;
+        }
+
+        .month-task-bar:hover .month-task-tooltip {
+            display: block;
+        }
+
+        #prev-btn, #next-btn {
+            z-index: 50000;
+        }
+    </style>
+</head>
+<body>
+    <!-- 상단 네비게이션 -->
+    <div class="top-nav">
+        <div class="nav-left">
+            <h1>🧱 Lego</h1>
+            <div class="nav-menu" id="navMenu">
+                <button class="nav-menu-btn active" onclick="location.href='my_calendar.html'">내 캘린더</button>
+            </div>
+        </div>
+        <div class="nav-right">
+            <div class="user-info" id="userInfo"></div>
+            <button class="logout-btn" onclick="logout()">로그아웃</button>
+        </div>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <div class="main-content">
+        <!-- 필터 바 -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>파트별</label>
+                <select id="filter-team" onchange="applyFilters()">
+                    <option value="all">전체</option>
+                    <option value="dev">개발팀</option>
+                    <option value="design">디자인팀</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>프로젝트별</label>
+                <select id="filter-project" onchange="applyFilters()">
+                    <option value="all">전체</option>
+                    <option value="project-a">프로젝트 A</option>
+                    <option value="project-b">프로젝트 B</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>개인별</label>
+                <select id="filter-user" disabled>
+                    <option value="me">내 일정</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 캘린더 + 일정 리스트 -->
+        <div class="content-wrapper">
+            <!-- 캘린더 섹션 -->
+            <div class="calendar-section">
+                <div class="toolbar">
+                    <div class="date-nav">
+                        <button class="nav-button" id="prev-btn" onclick="navigate('prev')">◀</button>
+                        <div class="current-date" id="current-date">2023년 3월</div>
+                        <button class="nav-button" id="next-btn" onclick="navigate('next')">▶</button>
+                    </div>
+
+                    <div style="display: flex; align-items: center;">
+                        <div class="view-switch">
+                            <button onclick="changeView(this)" data-view="month" class="active">월</button>
+                            <button onclick="changeView(this)" data-view="week">주</button>
+                            <button onclick="changeView(this)" data-view="day">일</button>
+                        </div>
+                        <div class="legend-wrapper">
+                            <button class="legend-btn">🎨 분류</button>
+                            <div class="legend-popup">
+                                <div class="legend-item">
+                                    <div class="dot" style="background: var(--task-blue-border);"></div>
+                                    <span>기획</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="dot" style="background: var(--task-green-border);"></div>
+                                    <span>개발</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="dot" style="background: var(--task-yellow-border);"></div>
+                                    <span>디자인</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 월별 뷰 -->
+                <div class="calendar-grid month-view active" id="month-grid"></div>
+
+                <!-- 주별 뷰 -->
+                <div class="calendar-grid week-view" id="week-grid"></div>
+
+                <!-- 일별 뷰 -->
+                <div class="calendar-grid day-view" id="day-grid"></div>
+            </div>
+
+            <!-- 일정 리스트 섹션 -->
+            <div class="schedule-list-section">
+                <div class="schedule-list-header" id="schedule-list-title">
+                    📋 일정 리스트
+                </div>
+                <div class="schedule-list-content" id="schedule-list"></div>
+            </div>
+        </div>
+
+        <!-- 상세정보 패널 -->
+        <div class="detail-panel" id="detail-panel">
+            <button class="close-detail-btn" onclick="closeDetailPanel()">×</button>
+            <div class="detail-section">
+                <div class="detail-section-title">📌 테스크 정보</div>
+                <div class="detail-row">
+                    <div class="detail-label">제목</div>
+                    <div class="detail-value" id="detail-task-title">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">카테고리</div>
+                    <div class="detail-value" id="detail-task-category">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">담당자</div>
+                    <div class="detail-value" id="detail-task-user">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">일정</div>
+                    <div class="detail-value" id="detail-task-schedule">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">할당 시간</div>
+                    <div class="detail-value" id="detail-task-hours">-</div>
+                </div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title">📂 프로젝트 정보</div>
+                <div class="detail-row">
+                    <div class="detail-label">프로젝트명</div>
+                    <div class="detail-value" id="detail-project-name">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">기준 시간</div>
+                    <div class="detail-value" id="detail-project-standard">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">할당 시간</div>
+                    <div class="detail-value" id="detail-project-assigned">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">진행률</div>
+                    <div class="detail-value" id="detail-project-progress">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 인증 체크
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+            alert('로그인이 필요합니다.');
+            window.location.href = 'login.html';
+        }
+
+        // 사용자 정보 표시
+        document.getElementById('userInfo').textContent = `${currentUser.name} (${getRoleName(currentUser.role)})`;
+
+        // 역할별 메뉴 추가
+        const navMenu = document.getElementById('navMenu');
+        if (currentUser.role === 'admin') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='admin.html'">관리자 대시보드</button>
+                <button class="nav-menu-btn" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else if (currentUser.role === 'teamlead') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                <button class="nav-menu-btn" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        }
+
+        function getRoleName(role) {
+            const roleNames = {
+                'admin': '관리자',
+                'teamlead': '팀장',
+                'user': '팀원'
+            };
+            return roleNames[role] || '사용자';
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // 데이터 구조
+        const USERS = {
+            'user-kim': { name: '김철수', team: 'dev' },
+            'user-lee': { name: '이영희', team: 'dev' },
+            'user-park': { name: '박명수', team: 'design' },
+            'user-haha': { name: '하하', team: 'design' }
+        };
+
+        const CATEGORIES = {
+            'planning': { name: '기획', color: 'blue', colorCode: '#3b82f6' },
+            'development': { name: '개발', color: 'green', colorCode: '#22c55e' },
+            'design': { name: '디자인', color: 'yellow', colorCode: '#eab308' }
+        };
+
+        const PROJECTS = {
+            'project-a': {
+                name: '프로젝트 A',
+                standardHours: 100,
+                assignedHours: 60
+            },
+            'project-b': {
+                name: '프로젝트 B',
+                standardHours: 80,
+                assignedHours: 45
+            }
+        };
+
+        const TASKS = {
+            'task-001': {
+                taskId: 'task-001',
+                title: 'DB 설계',
+                category: 'planning',
+                standardHours: 16,
+                projectId: 'project-a'
+            },
+            'task-002': {
+                taskId: 'task-002',
+                title: 'API 개발',
+                category: 'development',
+                standardHours: 24,
+                projectId: 'project-a'
+            },
+            'task-003': {
+                taskId: 'task-003',
+                title: 'UI 디자인',
+                category: 'design',
+                standardHours: 20,
+                projectId: 'project-b'
+            }
+        };
+
+        const TASK_ASSIGNMENTS = [
+            {
+                taskId: 'task-001',
+                user: 'user-kim',
+                startDate: '2023-03-01',
+                endDate: '2023-03-02',
+                startTime: '09:00',
+                endTime: '18:00',
+                assignedHours: 16
+            },
+            {
+                taskId: 'task-002',
+                user: 'user-kim',
+                startDate: '2023-03-06',
+                endDate: '2023-03-07',
+                startTime: '10:00',
+                endTime: '15:00',
+                assignedHours: 10
+            },
+            {
+                taskId: 'task-003',
+                user: 'user-park',
+                startDate: '2023-03-01',
+                endDate: '2023-03-01',
+                startTime: '13:00',
+                endTime: '17:00',
+                assignedHours: 4
+            }
+        ];
+
+        // 현재 로그인한 사용자의 일정만 필터링
+        let filteredAssignments = TASK_ASSIGNMENTS.filter(assignment => 
+            assignment.user === currentUser.userId
+        );
+
+        function getSchedulesForDate(dateStr) {
+            const schedules = [];
+            filteredAssignments.forEach(assignment => {
+                if (dateStr >= assignment.startDate && dateStr <= assignment.endDate) {
+                    const task = TASKS[assignment.taskId];
+                    if (task) {
+                        schedules.push({
+                            ...assignment,
+                            title: task.title,
+                            category: task.category,
+                            projectId: task.projectId
+                        });
+                    }
+                }
+            });
+            return schedules;
+        }
+
+        const SCHEDULE_DATA = new Proxy({}, {
+            get: function(target, dateStr) {
+                if (typeof dateStr !== 'string' || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    return target[dateStr];
+                }
+                if (!target[dateStr]) {
+                    target[dateStr] = getSchedulesForDate(dateStr);
+                }
+                return target[dateStr];
+            }
+        });
+
+        // 필터 적용
+        function applyFilters() {
+            const teamFilter = document.getElementById('filter-team').value;
+            const projectFilter = document.getElementById('filter-project').value;
+
+            filteredAssignments = TASK_ASSIGNMENTS.filter(assignment => {
+                if (assignment.user !== currentUser.userId) return false;
+
+                const user = USERS[assignment.user];
+                const task = TASKS[assignment.taskId];
+
+                if (teamFilter !== 'all' && user.team !== teamFilter) return false;
+                if (projectFilter !== 'all' && task.projectId !== projectFilter) return false;
+
+                return true;
+            });
+
+            // SCHEDULE_DATA 캐시 초기화
+            for (let key in SCHEDULE_DATA) {
+                if (key.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    delete SCHEDULE_DATA[key];
+                }
+            }
+
+            // 현재 뷰 재생성
+            const activeView = document.querySelector('.view-switch button.active').getAttribute('data-view');
+            if (activeView === 'month') {
+                generateMonthView(currentYear, currentMonth);
+            } else if (activeView === 'week') {
+                const weekDates = getWeekDates(currentWeekStart);
+                generateWeekView(weekDates);
+            } else if (activeView === 'day') {
+                const dateStr = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
+                generateDayView(currentDayDate, dateStr);
+            }
+
+            updateScheduleList();
+        }
+
+        // 현재 표시 중인 날짜
+        let currentYear = 2023;
+        let currentMonth = 3;
+        let currentWeekStart = new Date(2023, 2, 6);
+        let currentDayDate = new Date(2023, 2, 9);
+        let selectedSchedule = null;
+
+        // 뷰 전환
+        function changeView(btn) {
+            document.querySelectorAll('.view-switch button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const view = btn.getAttribute('data-view');
+            document.querySelectorAll('.calendar-grid').forEach(grid => grid.classList.remove('active'));
+
+            if (view === 'month') {
+                document.getElementById('month-grid').classList.add('active');
+                generateMonthView(currentYear, currentMonth);
+                updateDateDisplay();
+            } else if (view === 'week') {
+                document.getElementById('week-grid').classList.add('active');
+                const weekDates = getWeekDates(currentWeekStart);
+                generateWeekView(weekDates);
+                updateDateDisplay();
+            } else if (view === 'day') {
+                document.getElementById('day-grid').classList.add('active');
+                const dateStr = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
+                generateDayView(currentDayDate, dateStr);
+                updateDateDisplay();
+            }
+
+            updateScheduleList();
+        }
+
+        // 날짜 표시 업데이트
+        function updateDateDisplay() {
+            const dateDisplay = document.getElementById('current-date');
+            const activeView = document.querySelector('.view-switch button.active').getAttribute('data-view');
+
+            if (activeView === 'month') {
+                dateDisplay.textContent = `${currentYear}년 ${currentMonth}월`;
+            } else if (activeView === 'week') {
+                const weekEnd = new Date(currentWeekStart);
+                weekEnd.setDate(weekEnd.getDate() + 4);
+                dateDisplay.textContent = `${currentWeekStart.getFullYear()}년 ${currentWeekStart.getMonth() + 1}월 ${currentWeekStart.getDate()}일 ~ ${weekEnd.getMonth() + 1}월 ${weekEnd.getDate()}일`;
+            } else if (activeView === 'day') {
+                dateDisplay.textContent = `${currentDayDate.getFullYear()}년 ${currentDayDate.getMonth() + 1}월 ${currentDayDate.getDate()}일`;
+            }
+        }
+
+        // 일정 리스트 업데이트
+        function updateScheduleList() {
+            const listContainer = document.getElementById('schedule-list');
+            const listTitle = document.getElementById('schedule-list-title');
+            const activeView = document.querySelector('.view-switch button.active').getAttribute('data-view');
+
+            let schedules = [];
+            let titleText = '';
+
+            if (activeView === 'month') {
+                titleText = `📋 ${currentYear}년 ${currentMonth}월 일정`;
+                const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const daySchedules = SCHEDULE_DATA[dateStr] || [];
+                    schedules.push(...daySchedules.map(s => ({ ...s, date: dateStr })));
+                }
+            } else if (activeView === 'week') {
+                const weekEnd = new Date(currentWeekStart);
+                weekEnd.setDate(weekEnd.getDate() + 4);
+                titleText = `📋 ${currentWeekStart.getMonth() + 1}/${currentWeekStart.getDate()} ~ ${weekEnd.getMonth() + 1}/${weekEnd.getDate()} 일정`;
+                
+                const weekDates = getWeekDates(currentWeekStart);
+                weekDates.forEach(date => {
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    const daySchedules = SCHEDULE_DATA[dateStr] || [];
+                    schedules.push(...daySchedules.map(s => ({ ...s, date: dateStr })));
+                });
+            } else if (activeView === 'day') {
+                titleText = `📋 ${currentDayDate.getMonth() + 1}월 ${currentDayDate.getDate()}일 일정`;
+                const dateStr = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
+                const daySchedules = SCHEDULE_DATA[dateStr] || [];
+                schedules = daySchedules.map(s => ({ ...s, date: dateStr }));
+            }
+
+            listTitle.textContent = titleText;
+
+            if (schedules.length === 0) {
+                listContainer.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 40px 20px;">일정이 없습니다</div>';
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            schedules.forEach((schedule, index) => {
+                const category = CATEGORIES[schedule.category];
+                const task = TASKS[schedule.taskId];
+                
+                const scheduleItem = document.createElement('div');
+                scheduleItem.className = 'schedule-item';
+                scheduleItem.onclick = () => showScheduleDetail(schedule);
+
+                scheduleItem.innerHTML = `
+                    <div class="schedule-number ${category.color}">${index + 1}</div>
+                    <div class="schedule-info">
+                        <div class="schedule-title">${schedule.title}</div>
+                        <div class="schedule-time">${schedule.date} ${schedule.startTime} ~ ${schedule.endTime}</div>
+                    </div>
+                `;
+
+                listContainer.appendChild(scheduleItem);
+            });
+        }
+
+        // 일정 리스트에서 클릭 시 상세정보 표시
+        function showScheduleDetail(schedule) {
+            selectedSchedule = schedule;
+
+            // 리스트 아이템 선택 표시
+            document.querySelectorAll('.schedule-item').forEach(item => item.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+
+            const task = TASKS[schedule.taskId];
+            const category = CATEGORIES[schedule.category];
+            const user = USERS[schedule.user];
+            const project = PROJECTS[schedule.projectId];
+
+            // 테스크 정보
+            document.getElementById('detail-task-title').textContent = schedule.title;
+            document.getElementById('detail-task-category').textContent = category.name;
+            document.getElementById('detail-task-user').textContent = user.name;
+            document.getElementById('detail-task-schedule').textContent = `${schedule.startDate} ~ ${schedule.endDate}`;
+            document.getElementById('detail-task-hours').textContent = `${schedule.assignedHours}시간`;
+
+            // 프로젝트 정보
+            document.getElementById('detail-project-name').textContent = project.name;
+            document.getElementById('detail-project-standard').textContent = `${project.standardHours}시간`;
+            document.getElementById('detail-project-assigned').textContent = `${project.assignedHours}시간`;
+            const progress = Math.round((project.assignedHours / project.standardHours) * 100);
+            document.getElementById('detail-project-progress').textContent = `${progress}%`;
+
+            // 패널 표시
+            document.getElementById('detail-panel').classList.add('show');
+        }
+
+        // 캘린더에서 클릭 시 상세정보 표시 (오른쪽 리스트와 연동)
+        function showScheduleDetailFromCalendar(schedule) {
+            console.log('showScheduleDetailFromCalendar 호출됨:', schedule);
+            selectedSchedule = schedule;
+
+            // task에서 category와 projectId 정보 가져오기
+            const task = TASKS[schedule.taskId];
+            if (!task) {
+                console.error('Task를 찾을 수 없음:', schedule.taskId);
+                alert('일정 정보를 불러올 수 없습니다.');
+                return;
+            }
+
+            const category = CATEGORIES[task.category];  // task에서 category 가져오기
+            const user = USERS[schedule.user];
+            const project = PROJECTS[task.projectId];    // task에서 projectId 가져오기
+
+            if (!category || !user || !project) {
+                console.error('데이터 누락:', { task, category, user, project, schedule });
+                alert('일정 정보를 불러올 수 없습니다.');
+                return;
+            }
+
+            // 테스크 정보
+            document.getElementById('detail-task-title').textContent = task.title;
+            document.getElementById('detail-task-category').textContent = category.name;
+            document.getElementById('detail-task-user').textContent = user.name;
+            document.getElementById('detail-task-schedule').textContent = `${schedule.startDate} ~ ${schedule.endDate}`;
+            document.getElementById('detail-task-hours').textContent = `${schedule.assignedHours}시간`;
+
+            // 프로젝트 정보
+            document.getElementById('detail-project-name').textContent = project.name;
+            document.getElementById('detail-project-standard').textContent = `${project.standardHours}시간`;
+            document.getElementById('detail-project-assigned').textContent = `${project.assignedHours}시간`;
+            const progress = Math.round((project.assignedHours / project.standardHours) * 100);
+            document.getElementById('detail-project-progress').textContent = `${progress}%`;
+
+            // 오른쪽 리스트에서 해당 일정 찾아서 선택 표시
+            const scheduleItems = document.querySelectorAll('.schedule-item');
+            scheduleItems.forEach(item => {
+                item.classList.remove('selected');
+                
+                // 일정 리스트의 각 아이템과 비교 (taskId, user, startDate로 매칭)
+                const itemIndex = Array.from(scheduleItems).indexOf(item);
+                const activeView = document.querySelector('.view-switch button.active').getAttribute('data-view');
+                
+                let schedules = [];
+                if (activeView === 'month') {
+                    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const daySchedules = SCHEDULE_DATA[dateStr] || [];
+                        schedules.push(...daySchedules.map(s => ({ ...s, date: dateStr })));
+                    }
+                } else if (activeView === 'week') {
+                    const weekDates = getWeekDates(currentWeekStart);
+                    weekDates.forEach(date => {
+                        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        const daySchedules = SCHEDULE_DATA[dateStr] || [];
+                        schedules.push(...daySchedules.map(s => ({ ...s, date: dateStr })));
+                    });
+                } else if (activeView === 'day') {
+                    const dateStr = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
+                    const daySchedules = SCHEDULE_DATA[dateStr] || [];
+                    schedules = daySchedules.map(s => ({ ...s, date: dateStr }));
+                }
+
+                // 해당 인덱스의 스케줄과 비교
+                if (schedules[itemIndex]) {
+                    const listSchedule = schedules[itemIndex];
+                    if (listSchedule.taskId === schedule.taskId && 
+                        listSchedule.user === schedule.user) {
+                        item.classList.add('selected');
+                    }
+                }
+            });
+
+            // 패널 표시
+            console.log('패널 표시 중...');
+            const detailPanel = document.getElementById('detail-panel');
+            detailPanel.classList.add('show');
+            console.log('패널 클래스:', detailPanel.className);
+        }
+
+        function closeDetailPanel() {
+            document.getElementById('detail-panel').classList.remove('show');
+            document.querySelectorAll('.schedule-item').forEach(item => item.classList.remove('selected'));
+            selectedSchedule = null;
+        }
+
+        // 네비게이션
+        function navigate(direction) {
+            const activeView = document.querySelector('.view-switch button.active').getAttribute('data-view');
+
+            if (activeView === 'month') {
+                if (direction === 'prev') {
+                    currentMonth--;
+                    if (currentMonth < 1) {
+                        currentMonth = 12;
+                        currentYear--;
+                    }
+                } else {
+                    currentMonth++;
+                    if (currentMonth > 12) {
+                        currentMonth = 1;
+                        currentYear++;
+                    }
+                }
+                generateMonthView(currentYear, currentMonth);
+                updateDateDisplay();
+            } else if (activeView === 'week') {
+                if (direction === 'prev') {
+                    currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+                } else {
+                    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+                }
+                const weekDates = getWeekDates(currentWeekStart);
+                generateWeekView(weekDates);
+                updateDateDisplay();
+            } else if (activeView === 'day') {
+                if (direction === 'prev') {
+                    currentDayDate.setDate(currentDayDate.getDate() - 1);
+                } else {
+                    currentDayDate.setDate(currentDayDate.getDate() + 1);
+                }
+                const dateStr = `${currentDayDate.getFullYear()}-${String(currentDayDate.getMonth() + 1).padStart(2, '0')}-${String(currentDayDate.getDate()).padStart(2, '0')}`;
+                generateDayView(currentDayDate, dateStr);
+                updateDateDisplay();
+            }
+
+            updateScheduleList();
+        }
+
+        // 월별 뷰 생성
+        function generateMonthView(year = 2023, month = 3) {
+            const monthGrid = document.getElementById('month-grid');
+            monthGrid.innerHTML = '';
+
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0);
+            const firstDayOfWeek = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
+
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            dayNames.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'cell cell-header';
+                header.textContent = day;
+                monthGrid.appendChild(header);
+            });
+
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'cell month-view-cell';
+                monthGrid.appendChild(emptyCell);
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell month-view-cell';
+                const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                cell.setAttribute('data-date', dateString);
+
+                const dateNumber = document.createElement('div');
+                dateNumber.className = 'date-number';
+                dateNumber.textContent = day;
+                cell.appendChild(dateNumber);
+
+                const scheduleIndicator = document.createElement('div');
+                scheduleIndicator.className = 'schedule-indicator';
+                cell.appendChild(scheduleIndicator);
+
+                cell.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('month-task-bar')) return;
+                    goToDayView(dateString);
+                });
+
+                monthGrid.appendChild(cell);
+            }
+
+            setTimeout(() => {
+                const firstDateCell = monthGrid.querySelector('.month-view-cell[data-date]');
+                if (!firstDateCell) return;
+
+                const cellWidth = firstDateCell.offsetWidth;
+                const cellHeight = firstDateCell.offsetHeight;
+
+                const taskRanges = findContinuousTaskRanges(year, month);
+                const allTaskLayers = [];
+
+                taskRanges.forEach(range => {
+                    const category = CATEGORIES[range.category];
+                    const user = USERS[range.user];
+
+                    if (!user || !category) return;
+
+                    const startCellIndex = firstDayOfWeek + range.startDate - 1;
+                    const endCellIndex = firstDayOfWeek + range.endDate - 1;
+
+                    const startRow = Math.floor(startCellIndex / 7);
+                    const endRow = Math.floor(endCellIndex / 7);
+
+                    for (let currentRow = startRow; currentRow <= endRow; currentRow++) {
+                        const rowStartIndex = currentRow * 7;
+                        const rowEndIndex = rowStartIndex + 6;
+
+                        const barStartIndex = Math.max(startCellIndex, rowStartIndex);
+                        const barEndIndex = Math.min(endCellIndex, rowEndIndex);
+
+                        const barStartCol = barStartIndex % 7;
+                        const barEndCol = barEndIndex % 7;
+                        const barSpan = barEndCol - barStartCol + 1;
+
+                        let layerIndex = 0;
+                        let foundLayer = false;
+
+                        for (let i = 0; i < allTaskLayers.length; i++) {
+                            const layer = allTaskLayers[i];
+
+                            if (layer.row !== currentRow) continue;
+
+                            let hasConflict = false;
+                            for (let cell = barStartIndex; cell <= barEndIndex; cell++) {
+                                if (layer.occupiedCells.includes(cell)) {
+                                    hasConflict = true;
+                                    break;
+                                }
+                            }
+
+                            if (!hasConflict) {
+                                layerIndex = i;
+                                foundLayer = true;
+                                for (let cell = barStartIndex; cell <= barEndIndex; cell++) {
+                                    layer.occupiedCells.push(cell);
+                                }
+                                break;
+                            }
+                        }
+
+                        if (!foundLayer) {
+                            layerIndex = allTaskLayers.length;
+                            const occupiedCells = [];
+                            for (let cellIndex = barStartIndex; cellIndex <= barEndIndex; cellIndex++) {
+                                occupiedCells.push(cellIndex);
+                            }
+                            allTaskLayers.push({
+                                row: currentRow,
+                                occupiedCells: occupiedCells
+                            });
+                        }
+
+                        const barStartDate = Math.max(range.startDate, barStartIndex - firstDayOfWeek + 1);
+                        const barEndDate = Math.min(range.endDate, barEndIndex - firstDayOfWeek + 1);
+
+                        const taskBar = document.createElement('div');
+                        taskBar.className = `month-task-bar ${category.color} ${range.user}`;
+                        taskBar.setAttribute('data-task-id', range.taskId);
+                        taskBar.setAttribute('data-assignment', JSON.stringify(range.assignment));
+
+                        const topPosition = 45 + (currentRow * cellHeight) + 24 + (layerIndex * 24);
+                        const leftPosition = barStartCol * cellWidth + 10;
+                        const barWidth = (barSpan * cellWidth) - 20;
+
+                        taskBar.style.top = `${topPosition}px`;
+                        taskBar.style.left = `${leftPosition}px`;
+                        taskBar.style.width = `${barWidth}px`;
+
+                        const daysText = barSpan > 1 ? ` (${barSpan}일)` : '';
+                        taskBar.textContent = `${user.name}: ${range.title}${daysText}`;
+
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'month-task-tooltip';
+                        tooltip.innerHTML = `
+                            <strong>${category.name} - ${range.title}</strong>
+                            <div>👤 담당: ${user.name}</div>
+                            <div>📅 기간: ${barStartDate}일 ~ ${barEndDate}일 (${barSpan}일)</div>
+                            <div>⏱️ 총 시간: ${range.totalHours || 0}시간</div>
+                        `;
+                        taskBar.appendChild(tooltip);
+
+                        taskBar.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const assignmentData = JSON.parse(e.currentTarget.getAttribute('data-assignment'));
+                            showScheduleDetailFromCalendar(assignmentData);
+                        });
+
+                        taskBar.addEventListener('mouseenter', (e) => {
+                            const taskId = e.currentTarget.getAttribute('data-task-id');
+                            document.querySelectorAll(`.month-task-bar[data-task-id="${taskId}"]`).forEach(bar => {
+                                bar.classList.add('same-task-highlight');
+                            });
+                        });
+
+                        taskBar.addEventListener('mouseleave', (e) => {
+                            const taskId = e.currentTarget.getAttribute('data-task-id');
+                            document.querySelectorAll(`.month-task-bar[data-task-id="${taskId}"]`).forEach(bar => {
+                                bar.classList.remove('same-task-highlight');
+                            });
+                        });
+
+                        monthGrid.appendChild(taskBar);
+                    }
+                });
+            }, 100);
+        }
+
+        function findContinuousTaskRanges(year, month) {
+            const ranges = [];
+            const processedAssignments = new Set();
+
+            filteredAssignments.forEach((assignment, index) => {
+                if (processedAssignments.has(index)) return;
+
+                const startDate = new Date(assignment.startDate);
+                const endDate = new Date(assignment.endDate);
+
+                if (startDate.getFullYear() !== year || startDate.getMonth() + 1 !== month) {
+                    if (endDate.getFullYear() !== year || endDate.getMonth() + 1 !== month) {
+                        return;
+                    }
+                }
+
+                const task = TASKS[assignment.taskId];
+                if (!task) return;
+
+                let rangeStart = startDate;
+                let rangeEnd = endDate;
+                let totalHours = assignment.assignedHours || 0;
+
+                processedAssignments.add(index);
+
+                filteredAssignments.forEach((otherAssignment, otherIndex) => {
+                    if (processedAssignments.has(otherIndex)) return;
+                    if (otherAssignment.taskId !== assignment.taskId) return;
+                    if (otherAssignment.user !== assignment.user) return;
+
+                    const otherStart = new Date(otherAssignment.startDate);
+                    const otherEnd = new Date(otherAssignment.endDate);
+
+                    const dayDiff = Math.abs((otherStart - rangeEnd) / (1000 * 60 * 60 * 24));
+
+                    if (dayDiff <= 1) {
+                        if (otherStart < rangeStart) rangeStart = otherStart;
+                        if (otherEnd > rangeEnd) rangeEnd = otherEnd;
+                        totalHours += otherAssignment.assignedHours || 0;
+                        processedAssignments.add(otherIndex);
+                    }
+                });
+
+                ranges.push({
+                    taskId: assignment.taskId,
+                    user: assignment.user,
+                    title: task.title,
+                    category: task.category,
+                    startDate: rangeStart.getDate(),
+                    endDate: rangeEnd.getDate(),
+                    totalHours: totalHours,
+                    assignment: assignment
+                });
+            });
+
+            return ranges;
+        }
+
+        // 주별 뷰 생성
+        function getWeekDates(startDate) {
+            const dates = [];
+            for (let i = 0; i < 5; i++) {
+                const date = new Date(startDate);
+                date.setDate(date.getDate() + i);
+                dates.push(date);
+            }
+            return dates;
+        }
+
+        function generateWeekView(weekDates) {
+            const weekGrid = document.getElementById('week-grid');
+            weekGrid.innerHTML = '';
+
+            const headerCell = document.createElement('div');
+            headerCell.className = 'cell cell-header';
+            headerCell.textContent = '시간';
+            weekGrid.appendChild(headerCell);
+
+            weekDates.forEach(date => {
+                const dayName = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+                const header = document.createElement('div');
+                header.className = 'cell cell-header';
+                header.textContent = `${date.getMonth() + 1}/${date.getDate()} (${dayName})`;
+                weekGrid.appendChild(header);
+            });
+
+            for (let hour = 9; hour < 19; hour++) {
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'cell time-label';
+                timeLabel.textContent = `${hour}:00`;
+                weekGrid.appendChild(timeLabel);
+
+                weekDates.forEach(date => {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                    cell.setAttribute('data-date', dateStr);
+                    cell.setAttribute('data-hour', hour);
+
+                    const schedules = SCHEDULE_DATA[dateStr] || [];
+                    const hourSchedules = schedules.filter(s => {
+                        const startHour = parseInt(s.startTime.split(':')[0]);
+                        return startHour === hour;
+                    });
+
+                    const middleSchedules = schedules.filter(s => {
+                        const startHour = parseInt(s.startTime.split(':')[0]);
+                        const endHour = parseInt(s.endTime.split(':')[0]);
+                        return startHour < hour && endHour > hour;
+                    });
+
+                    const allHourSchedules = [...hourSchedules, ...middleSchedules];
+
+                    hourSchedules.forEach((schedule, index) => {
+                        const category = CATEGORIES[schedule.category];
+                        const user = USERS[schedule.user];
+                        if (!category || !user) return;
+
+                        const task = document.createElement('div');
+                        task.className = `task ${category.color}`;
+
+                        const startHour = parseInt(schedule.startTime.split(':')[0]);
+                        const endHour = parseInt(schedule.endTime.split(':')[0]);
+                        const duration = endHour - startHour;
+                        const heightPercent = (duration * 100);
+
+                        task.style.height = `${heightPercent}%`;
+                        task.style.top = '0';
+
+                        const columnCount = allHourSchedules.length;
+                        const leftPercent = (index / columnCount) * 100;
+                        const widthPercent = 100 / columnCount;
+
+                        task.style.left = `${leftPercent}%`;
+                        task.style.width = `${widthPercent}%`;
+
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
+                        task.setAttribute('data-schedule-id', scheduleId);
+                        task.setAttribute('data-schedule', JSON.stringify(schedule));
+
+                        const taskContent = document.createElement('div');
+                        taskContent.className = 'task-content-wrapper';
+                        taskContent.innerHTML = `
+                            <div><strong>${schedule.title}</strong></div>
+                            <div>${schedule.startTime} ~ ${schedule.endTime}</div>
+                        `;
+                        task.appendChild(taskContent);
+
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'task-detail-tooltip';
+                        tooltip.innerHTML = `
+                            <strong>${category.name} - ${schedule.title}</strong>
+                            <div>👤 담당: ${user.name}</div>
+                            <div>⏱️ ${schedule.startTime} ~ ${schedule.endTime}</div>
+                            <div>📅 ${dateStr}</div>
+                        `;
+                        task.appendChild(tooltip);
+
+                        task.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const scheduleData = JSON.parse(e.currentTarget.getAttribute('data-schedule'));
+                            showScheduleDetailFromCalendar(scheduleData);
+                        });
+
+                        cell.appendChild(task);
+                    });
+
+                    middleSchedules.forEach((schedule, index) => {
+                        const hoverArea = document.createElement('div');
+                        hoverArea.className = 'task-hover-area';
+                        hoverArea.style.position = 'absolute';
+                        hoverArea.style.top = '0';
+                        hoverArea.style.bottom = '0';
+
+                        const columnCount = allHourSchedules.length;
+                        const scheduleIndex = allHourSchedules.findIndex(s => s === schedule);
+                        const leftPercent = (scheduleIndex / columnCount) * 100;
+                        const widthPercent = 100 / columnCount;
+
+                        hoverArea.style.left = `${leftPercent}%`;
+                        hoverArea.style.width = `${widthPercent}%`;
+
+                        const startHour = parseInt(schedule.startTime.split(':')[0]);
+                        const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateStr}-${schedule.startTime.replace(':', '')}`;
+                        hoverArea.setAttribute('data-schedule-id', scheduleId);
+
+                        cell.appendChild(hoverArea);
+                    });
+
+                    weekGrid.appendChild(cell);
+                });
+            }
+
+            setupScheduleHoverEvents();
+        }
+
+        // 일별 뷰 생성
+        function generateDayView(date, dateString) {
+            const dayGrid = document.getElementById('day-grid');
+            dayGrid.innerHTML = '';
+
+            const headerCell = document.createElement('div');
+            headerCell.className = 'cell cell-header';
+            headerCell.textContent = '시간';
+            dayGrid.appendChild(headerCell);
+
+            const dayName = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+            const header = document.createElement('div');
+            header.className = 'cell cell-header';
+            header.textContent = `${date.getMonth() + 1}/${date.getDate()} (${dayName})`;
+            dayGrid.appendChild(header);
+
+            for (let hour = 0; hour < 24; hour++) {
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'cell time-label';
+                timeLabel.textContent = `${hour}:00`;
+                dayGrid.appendChild(timeLabel);
+
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.setAttribute('data-date', dateString);
+                cell.setAttribute('data-hour', hour);
+
+                const schedules = SCHEDULE_DATA[dateString] || [];
+                const hourSchedules = schedules.filter(s => {
+                    const startHour = parseInt(s.startTime.split(':')[0]);
+                    return startHour === hour;
+                });
+
+                const middleSchedules = schedules.filter(s => {
+                    const startHour = parseInt(s.startTime.split(':')[0]);
+                    const endHour = parseInt(s.endTime.split(':')[0]);
+                    return startHour < hour && endHour > hour;
+                });
+
+                const allHourSchedules = [...hourSchedules, ...middleSchedules];
+
+                hourSchedules.forEach((schedule, index) => {
+                    const category = CATEGORIES[schedule.category];
+                    const user = USERS[schedule.user];
+                    if (!category || !user) return;
+
+                    const task = document.createElement('div');
+                    task.className = `task ${category.color}`;
+
+                    const startHour = parseInt(schedule.startTime.split(':')[0]);
+                    const endHour = parseInt(schedule.endTime.split(':')[0]);
+                    const duration = endHour - startHour;
+                    const heightPercent = (duration * 100);
+
+                    task.style.height = `${heightPercent}%`;
+                    task.style.top = '0';
+
+                    const columnCount = allHourSchedules.length;
+                    const leftPercent = (index / columnCount) * 100;
+                    const widthPercent = 100 / columnCount;
+
+                    task.style.left = `${leftPercent}%`;
+                    task.style.width = `${widthPercent}%`;
+
+                    const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateString}-${schedule.startTime.replace(':', '')}`;
+                    task.setAttribute('data-schedule-id', scheduleId);
+                    task.setAttribute('data-schedule', JSON.stringify(schedule));
+
+                    const taskContent = document.createElement('div');
+                    taskContent.className = 'task-content-wrapper';
+                    taskContent.innerHTML = `
+                        <div><strong>${schedule.title}</strong></div>
+                        <div>${schedule.startTime} ~ ${schedule.endTime}</div>
+                    `;
+                    task.appendChild(taskContent);
+
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'task-detail-tooltip';
+                    tooltip.innerHTML = `
+                        <strong>${category.name} - ${schedule.title}</strong>
+                        <div>👤 담당: ${user.name}</div>
+                        <div>⏱️ ${schedule.startTime} ~ ${schedule.endTime}</div>
+                        <div>📅 ${dateString}</div>
+                    `;
+                    task.appendChild(tooltip);
+
+                    task.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const scheduleData = JSON.parse(e.currentTarget.getAttribute('data-schedule'));
+                        showScheduleDetailFromCalendar(scheduleData);
+                    });
+
+                    cell.appendChild(task);
+                });
+
+                middleSchedules.forEach((schedule, index) => {
+                    const hoverArea = document.createElement('div');
+                    hoverArea.className = 'task-hover-area';
+                    hoverArea.style.position = 'absolute';
+                    hoverArea.style.top = '0';
+                    hoverArea.style.bottom = '0';
+
+                    const columnCount = allHourSchedules.length;
+                    const scheduleIndex = allHourSchedules.findIndex(s => s === schedule);
+                    const leftPercent = (scheduleIndex / columnCount) * 100;
+                    const widthPercent = 100 / columnCount;
+
+                    hoverArea.style.left = `${leftPercent}%`;
+                    hoverArea.style.width = `${widthPercent}%`;
+
+                    const startHour = parseInt(schedule.startTime.split(':')[0]);
+                    const scheduleId = `schedule-${schedule.taskId}-${schedule.user}-${dateString}-${schedule.startTime.replace(':', '')}`;
+                    hoverArea.setAttribute('data-schedule-id', scheduleId);
+
+                    cell.appendChild(hoverArea);
+                });
+
+                dayGrid.appendChild(cell);
+            }
+
+            setupScheduleHoverEvents();
+        }
+
+        function setupScheduleHoverEvents() {
+            document.querySelectorAll('.task, .task-hover-area').forEach(el => {
+                el.onmouseenter = function(e) {
+                    const scheduleId = e.currentTarget.getAttribute('data-schedule-id');
+                    const taskBlock = document.querySelector(`.task[data-schedule-id="${scheduleId}"]`);
+                    if (taskBlock) {
+                        taskBlock.style.zIndex = '10000';
+                        const tooltip = taskBlock.querySelector('.task-detail-tooltip');
+                        if (tooltip) {
+                            tooltip.classList.add('force-show');
+                        }
+                    }
+                };
+
+                el.onmouseleave = function(e) {
+                    const scheduleId = e.currentTarget.getAttribute('data-schedule-id');
+                    const taskBlock = document.querySelector(`.task[data-schedule-id="${scheduleId}"]`);
+                    if (taskBlock) {
+                        taskBlock.style.zIndex = '1';
+                        const tooltip = taskBlock.querySelector('.task-detail-tooltip');
+                        if (tooltip) {
+                            tooltip.classList.remove('force-show');
+                        }
+                    }
+                };
+            });
+        }
+
+        function goToDayView(dateString) {
+            const [year, month, day] = dateString.split('-').map(Number);
+            currentDayDate = new Date(year, month - 1, day);
+
+            document.querySelectorAll('.view-switch button').forEach(b => b.classList.remove('active'));
+            document.querySelector('.view-switch button[data-view="day"]').classList.add('active');
+
+            document.querySelectorAll('.calendar-grid').forEach(grid => grid.classList.remove('active'));
+            document.getElementById('day-grid').classList.add('active');
+
+            generateDayView(currentDayDate, dateString);
+            updateDateDisplay();
+            updateScheduleList();
+        }
+
+        function goToWeekView(dateString) {
+            const [year, month, day] = dateString.split('-').map(Number);
+            const targetDate = new Date(year, month - 1, day);
+
+            const dayOfWeek = targetDate.getDay();
+            const monday = new Date(targetDate);
+            monday.setDate(targetDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+            currentWeekStart = monday;
+
+            document.querySelectorAll('.view-switch button').forEach(b => b.classList.remove('active'));
+            document.querySelector('.view-switch button[data-view="week"]').classList.add('active');
+
+            document.querySelectorAll('.calendar-grid').forEach(grid => grid.classList.remove('active'));
+            document.getElementById('week-grid').classList.add('active');
+
+            const weekDates = getWeekDates(currentWeekStart);
+            generateWeekView(weekDates);
+            updateDateDisplay();
+            updateScheduleList();
+        }
+
+        // 초기 렌더링
+        document.addEventListener('DOMContentLoaded', function() {
+            generateMonthView(currentYear, currentMonth);
+            updateDateDisplay();
+            updateScheduleList();
+        });
+    </script>
+</body>
+</html>

@@ -370,10 +370,8 @@
 <body>
     <div class="header">
         <h1>📋 테스크 스케줄 등록</h1>
-        <div class="btn-group">
-            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="file-input" onchange="handleExcelUpload(event)">
-            <button class="btn" onclick="document.getElementById('excelFileInput').click()">📤 엑셀 업로드</button>
-            <button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>
+        <div class="btn-group" id="headerButtons">
+            <!-- 동적으로 생성 -->
         </div>
     </div>
 
@@ -487,6 +485,14 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
+        // 로그인 체크
+        const loggedInUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        
+        if (!loggedInUser) {
+            alert('로그인이 필요합니다.');
+            window.location.href = 'login.html';
+        }
+        
         let projectData = [];
         let schedules = [];
         let currentUser = '';
@@ -777,8 +783,38 @@
             window.location.href = 'lego_mockup.html';
         }
 
+        // 역할별 헤더 버튼 생성
+        function createHeaderButtons(role) {
+            const headerButtons = document.getElementById('headerButtons');
+            const buttons = [];
+            
+            // 관리자: 모든 기능
+            if (role === 'admin') {
+                buttons.push('<button class="btn" onclick="location.href=\'admin.html\'">🔧 관리자</button>');
+                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="file-input" onchange="handleExcelUpload(event)">');
+                buttons.push('<button class="btn" onclick="document.getElementById(\'excelFileInput\').click()">📤 엑셀 업로드</button>');
+                buttons.push('<button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>');
+            }
+            // 팀장: 관리자 제외한 모든 기능
+            else if (role === 'teamlead') {
+                buttons.push('<button class="btn" onclick="location.href=\'teamlead.html\'">👔 팀장</button>');
+                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="file-input" onchange="handleExcelUpload(event)">');
+                buttons.push('<button class="btn" onclick="document.getElementById(\'excelFileInput\').click()">📤 엑셀 업로드</button>');
+                buttons.push('<button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>');
+            }
+            // 팀원: 스케줄 등록과 캘린더만
+            else {
+                buttons.push('<button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>');
+            }
+            
+            headerButtons.innerHTML = buttons.join('');
+        }
+        
         // 페이지 로드 시 저장된 데이터 복원
         window.onload = function() {
+            // 헤더 버튼 생성
+            createHeaderButtons(loggedInUser.role);
+            
             const saved = localStorage.getItem('projectSchedules');
             if (saved) {
                 const data = JSON.parse(saved);

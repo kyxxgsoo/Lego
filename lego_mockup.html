@@ -367,10 +367,8 @@
 
     <header class="header">
         <h1>프로젝트 계획 보기</h1>
-        <div style="display: flex; gap: 10px;">
-            <button class="upload-btn" onclick="location.href='task_schedule.html'"><span>📋</span> 스케줄 등록</button>
-            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelUpload(event)">
-            <button class="upload-btn" onclick="document.getElementById('excelFileInput').click()"><span>📤</span> 엑셀 업로드</button>
+        <div style="display: flex; gap: 10px;" id="headerButtons">
+            <!-- 동적으로 생성 -->
         </div>
     </header>
 
@@ -1820,6 +1818,17 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📅 캘린더 초기화 중...');
             
+            // 로그인 체크
+            const loggedInUser = JSON.parse(sessionStorage.getItem('currentUser'));
+            if (!loggedInUser) {
+                alert('로그인이 필요합니다.');
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // 역할별 헤더 버튼 생성
+            createHeaderButtons(loggedInUser.role);
+            
             // 0. localStorage에서 스케줄 데이터 로드
             loadSchedulesFromLocalStorage();
             
@@ -1847,6 +1856,46 @@
             
             console.log('🎉 모든 뷰 초기화 완료!');
         });
+        
+        // ============================================
+        // 🎨 역할별 헤더 버튼 생성
+        // ============================================
+        
+        function createHeaderButtons(role) {
+            const headerButtons = document.getElementById('headerButtons');
+            const buttons = [];
+            
+            // 관리자: 모든 버튼
+            if (role === 'admin') {
+                buttons.push('<button class="upload-btn" onclick="location.href=\'admin.html\'"><span>🔧</span> 관리자</button>');
+                buttons.push('<button class="upload-btn" onclick="location.href=\'task_schedule.html\'"><span>📋</span> 스케줄 등록</button>');
+                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelUpload(event)">');
+                buttons.push('<button class="upload-btn" onclick="document.getElementById(\'excelFileInput\').click()"><span>📤</span> 엑셀 업로드</button>');
+                buttons.push('<button class="upload-btn" onclick="logout()" style="background:#ef4444;"><span>🚪</span> 로그아웃</button>');
+            }
+            // 팀장: 관리자 제외한 모든 버튼
+            else if (role === 'teamlead') {
+                buttons.push('<button class="upload-btn" onclick="location.href=\'teamlead.html\'"><span>👔</span> 팀장</button>');
+                buttons.push('<button class="upload-btn" onclick="location.href=\'task_schedule.html\'"><span>📋</span> 스케줄 등록</button>');
+                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelUpload(event)">');
+                buttons.push('<button class="upload-btn" onclick="document.getElementById(\'excelFileInput\').click()"><span>📤</span> 엑셀 업로드</button>');
+                buttons.push('<button class="upload-btn" onclick="logout()" style="background:#ef4444;"><span>🚪</span> 로그아웃</button>');
+            }
+            // 팀원: 스케줄 등록과 캘린더만
+            else {
+                buttons.push('<button class="upload-btn" onclick="location.href=\'task_schedule.html\'"><span>📋</span> 내 할당 업무</button>');
+                buttons.push('<button class="upload-btn" onclick="logout()" style="background:#ef4444;"><span>🚪</span> 로그아웃</button>');
+            }
+            
+            headerButtons.innerHTML = buttons.join('');
+        }
+        
+        function logout() {
+            if (confirm('로그아웃 하시겠습니까?')) {
+                sessionStorage.removeItem('currentUser');
+                window.location.href = 'login.html';
+            }
+        }
         
         // ============================================
         // 💾 localStorage에서 스케줄 데이터 로드
