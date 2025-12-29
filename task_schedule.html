@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테스크 스케줄 등록</title>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        :root {
+            --bg-gray: #f4f6f8;
+            --border-color: #e5e7eb;
+            --primary-blue: #2563eb;
+            --text-dark: #1e293b;
+            --task-blue-bg: #dbeafe;
+            --task-green-bg: #dcfce7;
+            --task-yellow-bg: #fef9c3;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-gray);
+            margin: 0;
+            padding: 25px;
+            color: var(--text-dark);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background-color: #1e293b;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            background-color: #334155;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-blue);
+        }
+
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .panel h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-select-section {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .user-select-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #475569;
+        }
+
+        .user-select-section select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .task-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .task-item.scheduled {
+            opacity: 0.6;
+            border-left-color: #22c55e;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .task-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .task-meta {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .task-progress {
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-blue);
+            transition: width 0.3s;
+        }
+
+        .progress-fill.complete {
+            background: #22c55e;
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .schedule-btn {
+            background: var(--primary-blue);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
+
+        .schedule-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .schedule-btn:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+        }
+
+        .scheduled-badge {
+            background: #22c55e;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+
+        /* 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .time-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .upload-section {
+            text-align: center;
+            padding: 40px;
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .task-list-panel {
+            grid-column: 1 / -1;
+        }
+
+        .task-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .task-overview-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .allocation-list {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .allocation-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card:nth-child(2) {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stat-card:nth-child(3) {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 테스크 스케줄 등록</h1>
+        <div class="btn-group">
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="file-input" onchange="handleExcelUpload(event)">
+            <button class="btn" onclick="document.getElementById('excelFileInput').click()">📤 엑셀 업로드</button>
+            <button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>
+        </div>
+    </div>
+
+    <!-- 업로드 섹션 -->
+    <div id="uploadSection" class="panel">
+        <div class="upload-section">
+            <h2>📄 프로젝트 데이터 업로드</h2>
+            <p style="color: #64748b; margin: 10px 0;">엑셀 파일을 업로드하여 시작하세요</p>
+            <button class="btn btn-primary" onclick="document.getElementById('excelFileInput').click()">파일 선택</button>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 10px;">
+                필수 컬럼: 소속, 이름, 대분류, 중분류, 소분류, 기준시간, 할당시간
+            </p>
+        </div>
+    </div>
+
+    <!-- 메인 컨텐츠 -->
+    <div id="mainContent" style="display: none;">
+        <!-- 통계 카드 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="myTaskCount">0</div>
+                <div class="stat-label">내 할당 테스크</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="scheduledCount">0</div>
+                <div class="stat-label">스케줄 등록 완료</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalHours">0h</div>
+                <div class="stat-label">총 할당 시간</div>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <!-- 내 테스크 -->
+            <div class="panel">
+                <div class="user-select-section">
+                    <label>👤 사용자 선택</label>
+                    <select id="userSelect" onchange="filterMyTasks()">
+                        <option value="">선택하세요</option>
+                    </select>
+                </div>
+
+                <h2>📌 내가 할당받은 테스크</h2>
+                <div id="myTasksList">
+                    <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
+                        사용자를 선택하세요
+                    </p>
+                </div>
+            </div>
+
+            <!-- 전체 프로젝트 테스크 -->
+            <div class="panel">
+                <h2>📊 전체 프로젝트 테스크</h2>
+                <div id="projectTasksList">
+                    <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
+                        데이터를 업로드하세요
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 테스크 상세 리스트 -->
+        <div class="panel task-list-panel">
+            <h2>📋 테스크 할당 현황</h2>
+            <div class="task-overview" id="taskOverview">
+                <!-- 동적 생성 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 스케줄 등록 모달 -->
+    <div class="modal" id="scheduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⏰ 스케줄 등록</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div id="taskInfo" style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <!-- 테스크 정보 -->
+            </div>
+
+            <div class="form-group">
+                <label>시작일</label>
+                <input type="date" id="startDate">
+            </div>
+
+            <div class="form-group">
+                <label>종료일</label>
+                <input type="date" id="endDate">
+            </div>
+
+            <div class="time-grid">
+                <div class="form-group">
+                    <label>시작 시간</label>
+                    <input type="time" id="startTime" value="09:00">
+                </div>
+                <div class="form-group">
+                    <label>종료 시간</label>
+                    <input type="time" id="endTime" value="18:00">
+                </div>
+            </div>
+
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; gap: 10px;">
+                <button class="btn" style="flex: 1;" onclick="closeModal()">취소</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="saveSchedule()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        let projectData = [];
+        let schedules = [];
+        let currentUser = '';
+        let currentEditingTask = null;
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    processExcelData(jsonData);
+                } catch (error) {
+                    console.error('엑셀 파일 읽기 오류:', error);
+                    alert('엑셀 파일 읽기에 실패했습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelData(data) {
+            console.log('📊 엑셀 데이터:', data);
+            
+            projectData = data.map((row, index) => ({
+                id: `task-${String(index + 1).padStart(3, '0')}`,
+                소속: row['소속'] || '',
+                이름: row['이름'] || '',
+                부서: row['부서'] || '',
+                사업명: row['사업명'] || '',
+                대분류: row['대분류'] || '',
+                중분류: row['중분류'] || '',
+                소분류: row['소분류'] || '',
+                기준시간: parseInt(row['기준시간']) || 0,
+                할당시간: parseInt(row['할당시간']) || 0,
+                비고: row['비고'] || ''
+            }));
+
+            // 사용자 목록 생성
+            const users = [...new Set(projectData.map(item => `${item.이름} (${item.소속})`))];
+            const userSelect = document.getElementById('userSelect');
+            userSelect.innerHTML = '<option value="">선택하세요</option>';
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user;
+                option.textContent = user;
+                userSelect.appendChild(option);
+            });
+
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+
+            renderProjectTasks();
+            renderTaskOverview();
+            
+            alert(`${data.length}개의 테스크가 업로드되었습니다!`);
+        }
+
+        function filterMyTasks() {
+            currentUser = document.getElementById('userSelect').value;
+            if (!currentUser) return;
+
+            const userName = currentUser.split(' (')[0];
+            const myTasks = projectData.filter(task => task.이름 === userName && task.할당시간 > 0);
+
+            const container = document.getElementById('myTasksList');
+            container.innerHTML = '';
+
+            if (myTasks.length === 0) {
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px 0;">할당된 테스크가 없습니다</p>';
+                return;
+            }
+
+            myTasks.forEach(task => {
+                const isScheduled = schedules.some(s => s.taskId === task.id);
+                const scheduledHours = schedules
+                    .filter(s => s.taskId === task.id)
+                    .reduce((sum, s) => sum + calculateHours(s.startTime, s.endTime), 0);
+                
+                const progress = (scheduledHours / task.할당시간) * 100;
+
+                const div = document.createElement('div');
+                div.className = `task-item ${isScheduled ? 'scheduled' : ''}`;
+                div.innerHTML = `
+                    <div class="task-header">
+                        <div>
+                            <div class="task-title">${task.중분류} - ${task.소분류}</div>
+                            <div class="task-meta">
+                                <span class="category-badge">${task.대분류}</span>
+                                <span style="margin-left: 8px;">할당: ${task.할당시간}시간</span>
+                            </div>
+                            ${task.비고 ? `<div class="task-meta">📝 ${task.비고}</div>` : ''}
+                        </div>
+                        ${isScheduled ? '<span class="scheduled-badge">✓ 등록됨</span>' : ''}
+                    </div>
+                    <div class="task-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill ${progress >= 100 ? 'complete' : ''}" style="width: ${Math.min(progress, 100)}%"></div>
+                        </div>
+                        <div class="progress-text">${scheduledHours}h / ${task.할당시간}h (${progress.toFixed(0)}%)</div>
+                    </div>
+                    <button class="schedule-btn" onclick="openScheduleModal('${task.id}')" ${progress >= 100 ? 'disabled' : ''}>
+                        ${progress > 0 ? '추가 등록' : '스케줄 등록'}
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+
+            // 통계 업데이트
+            document.getElementById('myTaskCount').textContent = myTasks.length;
+            document.getElementById('scheduledCount').textContent = schedules.filter(s => 
+                myTasks.some(t => t.id === s.taskId)
+            ).length;
+            document.getElementById('totalHours').textContent = myTasks.reduce((sum, t) => sum + t.할당시간, 0) + 'h';
+        }
+
+        function renderProjectTasks() {
+            // 테스크별로 그룹화
+            const taskGroups = {};
+            projectData.forEach(task => {
+                const key = `${task.대분류}-${task.중분류}-${task.소분류}`;
+                if (!taskGroups[key]) {
+                    taskGroups[key] = {
+                        대분류: task.대분류,
+                        중분류: task.중분류,
+                        소분류: task.소분류,
+                        기준시간: task.기준시간,
+                        할당: []
+                    };
+                }
+                if (task.할당시간 > 0) {
+                    taskGroups[key].할당.push({
+                        이름: task.이름,
+                        소속: task.소속,
+                        할당시간: task.할당시간
+                    });
+                }
+            });
+
+            const container = document.getElementById('projectTasksList');
+            container.innerHTML = '';
+
+            Object.values(taskGroups).forEach(group => {
+                const totalAllocated = group.할당.reduce((sum, a) => sum + a.할당시간, 0);
+                const progress = (totalAllocated / group.기준시간) * 100;
+
+                const div = document.createElement('div');
+                div.className = 'task-item';
+                div.innerHTML = `
+                    <div class="task-title">${group.중분류}</div>
+                    <div class="task-meta">
+                        <span class="category-badge">${group.대분류}</span>
+                        <span style="margin-left: 8px;">기준: ${group.기준시간}h</span>
+                    </div>
+                    <div class="task-meta" style="margin-top: 8px;">
+                        👥 ${group.할당.length}명 할당 | ${totalAllocated}h / ${group.기준시간}h
+                    </div>
+                    <div class="task-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill ${progress >= 100 ? 'complete' : ''}" style="width: ${Math.min(progress, 100)}%"></div>
+                        </div>
+                        <div class="progress-text">${progress.toFixed(0)}%</div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderTaskOverview() {
+            const taskGroups = {};
+            projectData.forEach(task => {
+                const key = `${task.대분류}-${task.중분류}-${task.소분류}`;
+                if (!taskGroups[key]) {
+                    taskGroups[key] = {
+                        대분류: task.대분류,
+                        중분류: task.중분류,
+                        소분류: task.소분류,
+                        기준시간: task.기준시간,
+                        할당: []
+                    };
+                }
+                if (task.할당시간 > 0) {
+                    taskGroups[key].할당.push({
+                        이름: task.이름,
+                        소속: task.소속,
+                        할당시간: task.할당시간
+                    });
+                }
+            });
+
+            const container = document.getElementById('taskOverview');
+            container.innerHTML = '';
+
+            Object.values(taskGroups).forEach(group => {
+                const div = document.createElement('div');
+                div.className = 'task-overview-item';
+                div.innerHTML = `
+                    <div class="task-title">${group.중분류} - ${group.소분류}</div>
+                    <div class="task-meta">
+                        <span class="category-badge">${group.대분류}</span>
+                        <span style="margin-left: 8px;">기준: ${group.기준시간}h</span>
+                    </div>
+                    <div class="allocation-list">
+                        ${group.할당.map(a => `
+                            <div class="allocation-item">
+                                <span>👤 ${a.이름} (${a.소속})</span>
+                                <span><strong>${a.할당시간}h</strong></span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function openScheduleModal(taskId) {
+            currentEditingTask = projectData.find(t => t.id === taskId);
+            
+            document.getElementById('taskInfo').innerHTML = `
+                <strong>${currentEditingTask.중분류} - ${currentEditingTask.소분류}</strong>
+                <div style="margin-top: 8px; color: #64748b;">
+                    카테고리: ${currentEditingTask.대분류} | 
+                    할당 시간: <strong>${currentEditingTask.할당시간}시간</strong>
+                </div>
+                ${currentEditingTask.비고 ? `<div style="margin-top: 5px; color: #64748b;">📝 ${currentEditingTask.비고}</div>` : ''}
+            `;
+
+            document.getElementById('scheduleModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('scheduleModal').classList.remove('active');
+            currentEditingTask = null;
+        }
+
+        function calculateHours(startTime, endTime) {
+            const [startH, startM] = startTime.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+            return (endH * 60 + endM - startH * 60 - startM) / 60;
+        }
+
+        function saveSchedule() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+
+            if (!startDate || !endDate || !startTime || !endTime) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
+
+            const schedule = {
+                taskId: currentEditingTask.id,
+                user: currentUser.split(' (')[0],
+                task: currentEditingTask,
+                startDate,
+                endDate,
+                startTime,
+                endTime
+            };
+
+            schedules.push(schedule);
+            closeModal();
+            filterMyTasks();
+            
+            // localStorage에 저장
+            saveToLocalStorage();
+            
+            alert('스케줄이 등록되었습니다!');
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                projectData,
+                schedules
+            };
+            localStorage.setItem('projectSchedules', JSON.stringify(data));
+        }
+
+        function goToCalendar() {
+            saveToLocalStorage();
+            window.location.href = 'lego_mockup.html';
+        }
+
+        // 페이지 로드 시 저장된 데이터 복원
+        window.onload = function() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (saved) {
+                const data = JSON.parse(saved);
+                projectData = data.projectData || [];
+                schedules = data.schedules || [];
+                
+                if (projectData.length > 0) {
+                    // 사용자 목록 복원
+                    const users = [...new Set(projectData.map(item => `${item.이름} (${item.소속})`))];
+                    const userSelect = document.getElementById('userSelect');
+                    userSelect.innerHTML = '<option value="">선택하세요</option>';
+                    users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user;
+                        option.textContent = user;
+                        userSelect.appendChild(option);
+                    });
+
+                    document.getElementById('uploadSection').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                    
+                    renderProjectTasks();
+                    renderTaskOverview();
+                }
+            }
+        };
+    </script>
+</body>
+</html>
+

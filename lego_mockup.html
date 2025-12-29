@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>프로젝트 계획 보기 - 인터랙티브 목업</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
@@ -366,7 +367,11 @@
 
     <header class="header">
         <h1>프로젝트 계획 보기</h1>
-        <button class="upload-btn" onclick="alert('엑셀 분석 중...')"><span>📤</span> 엑셀 업로드</button>
+        <div style="display: flex; gap: 10px;">
+            <button class="upload-btn" onclick="location.href='task_schedule.html'"><span>📋</span> 스케줄 등록</button>
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelUpload(event)">
+            <button class="upload-btn" onclick="document.getElementById('excelFileInput').click()"><span>📤</span> 엑셀 업로드</button>
+        </div>
     </header>
 
     <div class="main-layout">
@@ -391,10 +396,10 @@
                     </div>
                 </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <button id="prev-btn" onclick="navigate(-1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;">◀</button>
+                <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:50000;">
+                    <button id="prev-btn" onclick="navigate(-1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;position:relative;z-index:50000;">◀</button>
                     <div style="font-weight:600;min-width:200px;text-align:center;" id="current-date-display">2023년 3월</div>
-                    <button id="next-btn" onclick="navigate(1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;">▶</button>
+                    <button id="next-btn" onclick="navigate(1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;position:relative;z-index:50000;">▶</button>
                 </div>
             </div>
 
@@ -1689,8 +1694,8 @@
                     // 픽셀 기반 위치 계산
                     // 헤더 행(45px) + 현재 주 행까지의 높이
                     const topPosition = 45 + (currentRow * cellHeight) + 24 + (layerIndex * 24);
-                    const leftPosition = barStartCol * cellWidth + 4;
-                    const barWidth = (barSpan * cellWidth) - 8;
+                    const leftPosition = barStartCol * cellWidth + 10;
+                    const barWidth = (barSpan * cellWidth) - 20; // 양쪽 여백 증가 (각 10px)
                     
                     taskBar.style.top = `${topPosition}px`;
                     taskBar.style.left = `${leftPosition}px`;
@@ -1815,6 +1820,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('📅 캘린더 초기화 중...');
             
+            // 0. localStorage에서 스케줄 데이터 로드
+            loadSchedulesFromLocalStorage();
+            
             // 1. 월별 뷰 생성 (기본: 2023년 3월)
             generateMonthView(2023, 3);
             console.log('✅ 월별 뷰 생성 완료!');
@@ -1839,6 +1847,179 @@
             
             console.log('🎉 모든 뷰 초기화 완료!');
         });
+        
+        // ============================================
+        // 💾 localStorage에서 스케줄 데이터 로드
+        // ============================================
+        
+        function loadSchedulesFromLocalStorage() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) return;
+            
+            try {
+                const data = JSON.parse(saved);
+                const schedules = data.schedules || [];
+                
+                console.log('📥 저장된 스케줄 로드:', schedules);
+                
+                // 사용자 매핑
+                const userMapping = {
+                    '이경수': 'user-kim',
+                    '문정석': 'user-lee',
+                    '김태형': 'user-park',
+                    '서재원': 'user-haha',
+                    '전상민': 'user-kim',
+                    '김도연': 'user-lee'
+                };
+                
+                // 카테고리 매핑
+                const categoryMapping = {
+                    '행사운영': 'planning',
+                    '경영기획': 'planning',
+                    '재무관리': 'development',
+                    '디자인': 'design',
+                    '교육운영': 'planning'
+                };
+                
+                schedules.forEach(schedule => {
+                    const task = schedule.task;
+                    const userId = userMapping[schedule.user] || 'user-kim';
+                    const category = categoryMapping[task.대분류] || 'planning';
+                    
+                    // TASKS에 추가 (중복 체크)
+                    if (!TASKS[schedule.taskId]) {
+                        TASKS[schedule.taskId] = {
+                            taskId: schedule.taskId,
+                            title: `${task.중분류} - ${task.소분류}`,
+                            category: category,
+                            totalHours: task.할당시간
+                        };
+                    }
+                    
+                    // TASK_ASSIGNMENTS에 추가
+                    TASK_ASSIGNMENTS.push({
+                        taskId: schedule.taskId,
+                        user: userId,
+                        startDate: schedule.startDate,
+                        endDate: schedule.endDate,
+                        startTime: schedule.startTime,
+                        endTime: schedule.endTime,
+                        note: task.비고 || ''
+                    });
+                });
+                
+                console.log('✅ 스케줄 로드 완료 - TASKS:', TASKS);
+                console.log('✅ 스케줄 로드 완료 - TASK_ASSIGNMENTS:', TASK_ASSIGNMENTS);
+                
+            } catch (error) {
+                console.error('스케줄 로드 오류:', error);
+            }
+        }
+        
+        // ============================================
+        // 📤 엑셀 업로드 및 데이터 처리
+        // ============================================
+        
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    processExcelData(jsonData);
+                } catch (error) {
+                    console.error('엑셀 파일 읽기 오류:', error);
+                    alert('엑셀 파일 읽기에 실패했습니다. 파일 형식을 확인해주세요.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function processExcelData(data) {
+            console.log('📊 엑셀 데이터:', data);
+            
+            // 기존 데이터 초기화
+            TASK_ASSIGNMENTS.length = 0;
+            Object.keys(TASKS).forEach(key => delete TASKS[key]);
+            
+            let taskCounter = 1;
+            const categoryMapping = {
+                '기획': 'planning',
+                '개발': 'development',
+                '디자인': 'design',
+                '촬영': 'design',
+                '에셋': 'development',
+                '교육': 'planning'
+            };
+            
+            // 사용자 매핑 (실제로는 엑셀에서 담당자 정보를 읽어와야 함)
+            const userMapping = {
+                '김철수': 'user-kim',
+                '이영희': 'user-lee',
+                '박명수': 'user-park',
+                '하하': 'user-haha'
+            };
+            
+            data.forEach((row, index) => {
+                const taskId = `task-${String(taskCounter).padStart(3, '0')}`;
+                
+                // 소분류에서 카테고리 추론
+                const category3 = row['소분류'] || row['category3'] || '';
+                let category = 'planning';
+                for (const [key, value] of Object.entries(categoryMapping)) {
+                    if (category3.includes(key)) {
+                        category = value;
+                        break;
+                    }
+                }
+                
+                // 테스크 정의 생성
+                TASKS[taskId] = {
+                    taskId: taskId,
+                    title: row['중분류'] || row['category2'] || `테스크 ${taskCounter}`,
+                    category: category,
+                    totalHours: parseInt(row['기준시간'] || row['standardHours']) || 8
+                };
+                
+                // 임시 할당 생성 (실제로는 엑셀에서 담당자, 날짜 정보를 읽어와야 함)
+                const userName = row['담당자'] || Object.keys(userMapping)[index % 4];
+                const userId = userMapping[userName] || 'user-kim';
+                const hours = TASKS[taskId].totalHours;
+                
+                // 3월 첫째 주부터 순차적으로 배치
+                const startDay = 1 + Math.floor(taskCounter / 2);
+                const endDay = Math.min(startDay + Math.ceil(hours / 8) - 1, 31);
+                
+                TASK_ASSIGNMENTS.push({
+                    taskId: taskId,
+                    user: userId,
+                    startDate: `2023-03-${String(startDay).padStart(2, '0')}`,
+                    endDate: `2023-03-${String(endDay).padStart(2, '0')}`,
+                    startTime: '09:00',
+                    endTime: hours <= 8 ? `${9 + hours}:00` : '18:00',
+                    note: row['비고'] || row['note'] || ''
+                });
+                
+                taskCounter++;
+            });
+            
+            console.log('✅ 처리된 테스크:', TASKS);
+            console.log('✅ 처리된 할당:', TASK_ASSIGNMENTS);
+            
+            // 모든 뷰 재생성
+            generateMonthView(2023, 3);
+            generateWeekView();
+            generateDayView();
+            syncCalendar();
+            
+            alert(`${data.length}개의 테스크가 성공적으로 업로드되었습니다!`);
+        }
     </script>
 </body>
 </html>
