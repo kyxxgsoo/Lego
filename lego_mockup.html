@@ -21,19 +21,97 @@
         body {
             font-family: 'Pretendard', sans-serif;
             background-color: var(--bg-gray);
-            margin: 0; padding: 25px;
+            margin: 0; padding: 0;
             color: var(--text-dark);
             height: 100vh; display: flex; flex-direction: column;
             box-sizing: border-box;
         }
 
-        /* --- Header --- */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
-        .upload-btn {
-            background-color: #1e293b; color: white; padding: 10px 20px;
-            border-radius: 8px; border: none; display: flex; align-items: center;
-            gap: 8px; cursor: pointer; font-weight: 600;
+        /* 상단 네비게이션 */
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .nav-left h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-menu-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-menu-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        .nav-menu-btn.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-dark);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        /* 메인 컨테이너 */
+        .main-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
         }
 
         /* --- Layout --- */
@@ -348,6 +426,36 @@
         .task.green { background: var(--task-green-bg); color: var(--task-green-text); border-left-color: var(--task-green-border); }
         .task.yellow { background: var(--task-yellow-bg); color: var(--task-yellow-text); border-left-color: var(--task-yellow-border); }
         .task.hidden { display: none !important; }
+        
+        /* 등록된 테스크 스타일 (회색, 불투명) */
+        .task.scheduled,
+        .month-task-bar.scheduled {
+            background: #9ca3af !important;
+            color: #ffffff !important;
+            border-left-color: #6b7280 !important;
+            opacity: 0.7 !important;
+        }
+        
+        .task.scheduled.blue,
+        .month-task-bar.scheduled.blue {
+            background: #9ca3af !important;
+            color: #ffffff !important;
+            border-left-color: #6b7280 !important;
+        }
+        
+        .task.scheduled.green,
+        .month-task-bar.scheduled.green {
+            background: #9ca3af !important;
+            color: #ffffff !important;
+            border-left-color: #6b7280 !important;
+        }
+        
+        .task.scheduled.yellow,
+        .month-task-bar.scheduled.yellow {
+            background: #9ca3af !important;
+            color: #ffffff !important;
+            border-left-color: #6b7280 !important;
+        }
 
         /* --- Sidebar --- */
         .sidebar {
@@ -364,14 +472,23 @@
     </style>
 </head>
 <body>
-
-    <header class="header">
-        <h1>프로젝트 계획 보기</h1>
-        <div style="display: flex; gap: 10px;" id="headerButtons">
-            <!-- 동적으로 생성 -->
+    <!-- 상단 네비게이션 -->
+    <div class="top-nav">
+        <div class="nav-left">
+            <h1 onclick="location.href='my_calendar.html'">🧱 Lego</h1>
+            <div class="nav-menu" id="navMenu">
+                <button class="nav-menu-btn" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                <!-- 역할별 메뉴는 JS에서 동적으로 추가 -->
+            </div>
         </div>
-    </header>
+        <div class="nav-right">
+            <div class="user-info" id="userInfo"></div>
+            <button class="logout-btn" onclick="logout()">로그아웃</button>
+        </div>
+    </div>
 
+    <!-- 메인 컨테이너 -->
+    <div class="main-container">
     <div class="main-layout">
         <div class="content-area">
             <div class="toolbar">
@@ -449,6 +566,53 @@
     </div>
 
     <script>
+        // ============================================
+        // 🔐 인증 체크 및 네비게이션 설정
+        // ============================================
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+            alert('로그인이 필요합니다.');
+            window.location.href = 'login.html';
+        }
+
+        function getRoleName(role) {
+            const roleNames = {
+                'admin': '관리자',
+                'teamlead': '팀장',
+                'user': '팀원'
+            };
+            return roleNames[role] || '사용자';
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // 사용자 정보 표시
+        document.getElementById('userInfo').textContent = `${currentUser.name} (${getRoleName(currentUser.role)})`;
+
+        // 역할별 메뉴 추가
+        const navMenu = document.getElementById('navMenu');
+        if (currentUser.role === 'admin') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='admin.html'">관리자 대시보드</button>
+                <button class="nav-menu-btn active" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else if (currentUser.role === 'teamlead') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                <button class="nav-menu-btn active" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn active" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        }
+
         // ============================================
         // 📊 데이터 관리 영역 (Data Management)
         // ============================================
@@ -542,8 +706,83 @@
             }
         };
         
+        // localStorage에서 팀원이 등록한 스케줄 로드
+        function loadSchedulesFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem('taskSchedules');
+                if (saved) {
+                    const userSchedules = JSON.parse(saved);
+                    console.log('📥 localStorage에서 스케줄 로드:', userSchedules);
+                    return userSchedules;
+                }
+            } catch (error) {
+                console.error('스케줄 로드 오류:', error);
+            }
+            return [];
+        }
+
+        // 사용자 이름을 user ID로 매핑
+        function getUserByName(userName) {
+            for (const [userId, userInfo] of Object.entries(USERS)) {
+                if (userInfo.name === userName) {
+                    return userId;
+                }
+            }
+            return null;
+        }
+
+        // 카테고리 매핑 (대분류 -> 소분류)
+        function getCategoryFromTask(task) {
+            const 대분류 = task.대분류 || task.task?.대분류 || '';
+            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영')) {
+                return 'planning';
+            } else if (대분류.includes('개발') || 대분류.includes('재무')) {
+                return 'development';
+            } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
+                return 'design';
+            }
+            return 'planning'; // 기본값
+        }
+
+        // localStorage 스케줄을 TASK_ASSIGNMENTS 형식으로 변환
+        function convertUserSchedulesToAssignments(userSchedules) {
+            const converted = [];
+            userSchedules.forEach(schedule => {
+                const userId = getUserByName(schedule.userName);
+                if (!userId) return;
+                
+                const category = getCategoryFromTask(schedule.task || schedule);
+                
+                // taskId 생성 (소분류 기반)
+                const taskId = `user-task-${schedule.taskId || schedule.id}`;
+                
+                // TASKS에 추가 (없는 경우)
+                if (!TASKS[taskId]) {
+                    TASKS[taskId] = {
+                        taskId: taskId,
+                        title: schedule.task?.중분류 || schedule.task?.소분류 || '테스크',
+                        category: category,
+                        totalHours: schedule.task?.할당시간 || schedule.assignedHours || 0,
+                        isUserScheduled: true // 등록된 테스크 표시
+                    };
+                }
+                
+                converted.push({
+                    taskId: taskId,
+                    user: userId,
+                    startDate: schedule.startDate,
+                    endDate: schedule.endDate,
+                    startTime: schedule.startTime,
+                    endTime: schedule.endTime,
+                    assignedHours: schedule.assignedHours,
+                    isUserScheduled: true // 등록된 테스크 표시
+                });
+            });
+            return converted;
+        }
+
         // 테스크 배정 스케줄 (실제 작업 일정)
-        const TASK_ASSIGNMENTS = [
+        let TASK_ASSIGNMENTS = [
             // task-001: 요구사항 분석 (8시간) - 김철수 4h + 이영희 4h
             { taskId: 'task-001', user: 'user-kim', startDate: '2023-02-27', endDate: '2023-02-28', startTime: '10:00', endTime: '12:00' },  // 2일 연속, 각 2시간 = 4시간
             { taskId: 'task-001', user: 'user-lee', startDate: '2023-02-27', endDate: '2023-02-27', startTime: '14:00', endTime: '18:00' },  // 4시간
@@ -609,6 +848,12 @@
         TASKS['task-013'] = { taskId: 'task-013', title: 'Q2 계획 수립', category: 'planning', totalHours: 2 };
         TASKS['task-014'] = { taskId: 'task-014', title: '성능 개선', category: 'development', totalHours: 3 };
         
+        // localStorage에서 팀원이 등록한 스케줄 병합
+        const userSchedules = loadSchedulesFromLocalStorage();
+        const convertedSchedules = convertUserSchedulesToAssignments(userSchedules);
+        TASK_ASSIGNMENTS = [...TASK_ASSIGNMENTS, ...convertedSchedules];
+        console.log('📊 전체 스케줄:', TASK_ASSIGNMENTS);
+        
         // ============================================
         // 📅 헬퍼 함수: TASK_ASSIGNMENTS로부터 날짜별 스케줄 생성
         // ============================================
@@ -642,7 +887,8 @@
                         note: assignment.note || '',
                         startDate: assignment.startDate,
                         endDate: assignment.endDate,
-                        totalHours: task.totalHours
+                        totalHours: task.totalHours,
+                        isUserScheduled: assignment.isUserScheduled || false
                     });
                 }
             });
@@ -1096,7 +1342,8 @@
                                 ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                             </div>`;
                             
-                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" data-date="${dateStr}" onclick="goToDayView('${dateStr}')" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; cursor: pointer; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                            const scheduledClass = schedule.isUserScheduled ? ' scheduled' : '';
+                            cellContent += `<div class="task ${category.color} ${schedule.user}${scheduledClass}" data-schedule-id="${scheduleId}" data-date="${dateStr}" onclick="goToDayView('${dateStr}')" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; cursor: pointer; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                         });
                     } else {
                         // 겹치지 않는 경우 - 전체 너비 사용
@@ -1124,7 +1371,8 @@
                                 ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                             </div>`;
                             
-                            cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" data-date="${dateStr}" onclick="goToDayView('${dateStr}')" style="height: ${height}px; cursor: pointer;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                            const scheduledClass = schedule.isUserScheduled ? ' scheduled' : '';
+                            cellContent += `<div class="task ${category.color} ${schedule.user}${scheduledClass}" data-schedule-id="${scheduleId}" data-date="${dateStr}" onclick="goToDayView('${dateStr}')" style="height: ${height}px; cursor: pointer;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                         });
                     }
                     
@@ -1352,7 +1600,8 @@
                             ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                         </div>`;
                         
-                        cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                        const scheduledClass = schedule.isUserScheduled ? ' scheduled' : '';
+                        cellContent += `<div class="task ${category.color} ${schedule.user}${scheduledClass}" data-schedule-id="${scheduleId}" style="height: ${height}px; position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 5px; z-index: ${index + 1}; ${index < columnCount - 1 ? 'border-right: 2px solid white;' : ''}"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                     });
                 } else {
                     // 겹치지 않는 경우 - 전체 너비 사용
@@ -1380,7 +1629,8 @@
                             ${noteText ? `<div class="tooltip-row"><span class="tooltip-label">비고:</span> <span class="tooltip-value">${noteText}</span></div>` : ''}
                         </div>`;
                         
-                        cellContent += `<div class="task ${category.color} ${schedule.user}" data-schedule-id="${scheduleId}" style="height: ${height}px;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
+                        const scheduledClass = schedule.isUserScheduled ? ' scheduled' : '';
+                        cellContent += `<div class="task ${category.color} ${schedule.user}${scheduledClass}" data-schedule-id="${scheduleId}" style="height: ${height}px;"><div class="task-content-wrapper">[${category.name}] ${schedule.title} - ${user.name}${note}</div>${tooltip}</div>`;
                     });
                 }
                 
@@ -1685,15 +1935,24 @@
                     const barStartDate = Math.max(range.startDate, barStartIndex - firstDayOfWeek + 1);
                     const barEndDate = Math.min(range.endDate, barEndIndex - firstDayOfWeek + 1);
                     
+                    // 등록된 테스크인지 확인
+                    const isScheduled = range.isUserScheduled || 
+                        TASK_ASSIGNMENTS.some(a => 
+                            a.taskId === range.taskId && 
+                            a.user === range.user && 
+                            a.isUserScheduled
+                        );
+                    
                     const taskBar = document.createElement('div');
-                    taskBar.className = `month-task-bar ${category.color} ${range.user}`;
+                    taskBar.className = `month-task-bar ${category.color} ${range.user} ${isScheduled ? 'scheduled' : ''}`;
                     taskBar.setAttribute('data-task-id', range.taskId); // 같은 테스크 식별용
+                    taskBar.setAttribute('data-scheduled', isScheduled ? 'true' : 'false');
                     
                     // 픽셀 기반 위치 계산
                     // 헤더 행(45px) + 현재 주 행까지의 높이
                     const topPosition = 45 + (currentRow * cellHeight) + 24 + (layerIndex * 24);
-                    const leftPosition = barStartCol * cellWidth + 10;
-                    const barWidth = (barSpan * cellWidth) - 20; // 양쪽 여백 증가 (각 10px)
+                    const leftPosition = barStartCol * cellWidth + 14;
+                    const barWidth = (barSpan * cellWidth) - 30; // 양쪽 여백 증가 (각 15px)
                     
                     taskBar.style.top = `${topPosition}px`;
                     taskBar.style.left = `${leftPosition}px`;
@@ -1819,16 +2078,6 @@
             console.log('📅 캘린더 초기화 중...');
             
             // 로그인 체크
-            const loggedInUser = JSON.parse(sessionStorage.getItem('currentUser'));
-            if (!loggedInUser) {
-                alert('로그인이 필요합니다.');
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            // 역할별 헤더 버튼 생성
-            createHeaderButtons(loggedInUser.role);
-            
             // 0. localStorage에서 스케줄 데이터 로드
             loadSchedulesFromLocalStorage();
             
@@ -1857,45 +2106,6 @@
             console.log('🎉 모든 뷰 초기화 완료!');
         });
         
-        // ============================================
-        // 🎨 역할별 헤더 버튼 생성
-        // ============================================
-        
-        function createHeaderButtons(role) {
-            const headerButtons = document.getElementById('headerButtons');
-            const buttons = [];
-            
-            // 관리자: 모든 버튼
-            if (role === 'admin') {
-                buttons.push('<button class="upload-btn" onclick="location.href=\'admin.html\'"><span>🔧</span> 관리자</button>');
-                buttons.push('<button class="upload-btn" onclick="location.href=\'task_schedule.html\'"><span>📋</span> 스케줄 등록</button>');
-                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelUpload(event)">');
-                buttons.push('<button class="upload-btn" onclick="document.getElementById(\'excelFileInput\').click()"><span>📤</span> 엑셀 업로드</button>');
-                buttons.push('<button class="upload-btn" onclick="logout()" style="background:#ef4444;"><span>🚪</span> 로그아웃</button>');
-            }
-            // 팀장: 관리자 제외한 모든 버튼
-            else if (role === 'teamlead') {
-                buttons.push('<button class="upload-btn" onclick="location.href=\'teamlead.html\'"><span>👔</span> 팀장</button>');
-                buttons.push('<button class="upload-btn" onclick="location.href=\'task_schedule.html\'"><span>📋</span> 스케줄 등록</button>');
-                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelUpload(event)">');
-                buttons.push('<button class="upload-btn" onclick="document.getElementById(\'excelFileInput\').click()"><span>📤</span> 엑셀 업로드</button>');
-                buttons.push('<button class="upload-btn" onclick="logout()" style="background:#ef4444;"><span>🚪</span> 로그아웃</button>');
-            }
-            // 팀원: 스케줄 등록과 캘린더만
-            else {
-                buttons.push('<button class="upload-btn" onclick="location.href=\'task_schedule.html\'"><span>📋</span> 내 할당 업무</button>');
-                buttons.push('<button class="upload-btn" onclick="logout()" style="background:#ef4444;"><span>🚪</span> 로그아웃</button>');
-            }
-            
-            headerButtons.innerHTML = buttons.join('');
-        }
-        
-        function logout() {
-            if (confirm('로그아웃 하시겠습니까?')) {
-                sessionStorage.removeItem('currentUser');
-                window.location.href = 'login.html';
-            }
-        }
         
         // ============================================
         // 💾 localStorage에서 스케줄 데이터 로드
@@ -2070,5 +2280,6 @@
             alert(`${data.length}개의 테스크가 성공적으로 업로드되었습니다!`);
         }
     </script>
+    </div> <!-- main-container 닫기 -->
 </body>
 </html>

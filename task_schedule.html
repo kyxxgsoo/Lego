@@ -25,26 +25,96 @@
             font-family: 'Pretendard', sans-serif;
             background-color: var(--bg-gray);
             margin: 0;
-            padding: 25px;
+            padding: 0;
             color: var(--text-dark);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        .header {
+        /* 상단 네비게이션 */
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
-        .header h1 {
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .nav-left h1 {
             font-size: 1.5rem;
             font-weight: 700;
             margin: 0;
+            color: var(--primary-blue);
+            cursor: pointer;
         }
 
-        .btn-group {
+        .nav-menu {
             display: flex;
             gap: 10px;
+        }
+
+        .nav-menu-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-menu-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        .nav-menu-btn.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-dark);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        /* 메인 컨테이너 */
+        .main-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
         }
 
         .btn {
@@ -115,17 +185,104 @@
             font-size: 0.9rem;
         }
 
+        /* 테트리스 스타일 블록 디자인 */
         .task-item {
             background: #f8fafc;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 12px;
             border-left: 4px solid var(--primary-blue);
+            position: relative;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .task-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         .task-item.scheduled {
             opacity: 0.6;
             border-left-color: #22c55e;
+            background: #e5e7eb;
+        }
+
+        /* 테트리스 블록 시각화 */
+        .task-blocks-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 12px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .task-block {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            border: 2px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .task-block:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .task-block.available {
+            background: var(--task-blue-bg);
+            border-color: var(--task-blue-border);
+            color: var(--task-blue-text);
+        }
+
+        .task-block.scheduled {
+            background: #9ca3af;
+            border-color: #6b7280;
+            color: white;
+            opacity: 0.7;
+        }
+
+        .task-block-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 5px;
+            background: #1e293b;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+
+        .task-block:hover .task-block-tooltip {
+            opacity: 1;
+        }
+
+        .task-block-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: #1e293b;
         }
 
         .task-header {
@@ -295,6 +452,18 @@
             border: 2px dashed var(--border-color);
             border-radius: 12px;
             margin-bottom: 20px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            transition: all 0.3s;
+        }
+        
+        .upload-section:hover {
+            border-color: var(--primary-blue);
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+        
+        .upload-section h2 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
         }
 
         .file-input {
@@ -428,24 +597,23 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📋 테스크 스케줄 등록</h1>
-        <div class="btn-group" id="headerButtons">
-            <!-- 동적으로 생성 -->
+    <!-- 상단 네비게이션 -->
+    <div class="top-nav">
+        <div class="nav-left">
+            <h1 onclick="location.href='my_calendar.html'">🧱 Lego</h1>
+            <div class="nav-menu" id="navMenu">
+                <button class="nav-menu-btn" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                <!-- 역할별 메뉴는 JS에서 동적으로 추가 -->
+            </div>
+        </div>
+        <div class="nav-right">
+            <div class="user-info" id="userInfo"></div>
+            <button class="logout-btn" onclick="logout()">로그아웃</button>
         </div>
     </div>
 
-    <!-- 업로드 섹션 -->
-    <div id="uploadSection" class="panel">
-        <div class="upload-section">
-            <h2>📄 프로젝트 데이터 업로드</h2>
-            <p style="color: #64748b; margin: 10px 0;">엑셀 파일을 업로드하여 시작하세요</p>
-            <button class="btn btn-primary" onclick="document.getElementById('excelFileInput').click()">파일 선택</button>
-            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 10px;">
-                필수 컬럼: 소속, 이름, 대분류, 중분류, 소분류, 기준시간, 할당시간
-            </p>
-        </div>
-    </div>
+    <!-- 메인 컨테이너 -->
+    <div class="main-container">
 
     <!-- 메인 컨텐츠 -->
     <div id="mainContent" style="display: none;">
@@ -474,7 +642,7 @@
                         <span id="currentUserDisplay">-</span>
                     </div>
                 </div>
-                <button class="btn" onclick="loadSampleData()" style="margin-top: 24px;">📝 샘플 데이터 로드</button>
+                <button class="btn" onclick="loadSampleData()" style="margin-top: 24px; display: none;" id="sampleDataBtn">📝 샘플 데이터 로드</button>
             </div>
         </div>
 
@@ -483,7 +651,7 @@
             <h2>📌 내가 할당받은 테스크</h2>
             <div id="myTasksList">
                 <p style="color: #94a3b8; text-align: center; padding: 40px 0;">
-                    데이터를 업로드하거나 샘플 데이터를 로드하세요
+                    프로젝트 등록 페이지에서 데이터를 등록하거나 샘플 데이터를 로드하세요
                 </p>
             </div>
         </div>
@@ -537,6 +705,8 @@
         </div>
     </div>
 
+    </div> <!-- main-container 닫기 -->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         // 로그인 체크
@@ -547,13 +717,8 @@
             window.location.href = 'login.html';
         }
         
-        let projectData = [];
-        let schedules = [];
-        let currentUser = loggedInUser.name; // 로그인한 사용자의 이름
-        let currentEditingTask = null;
-
-        // 현재 사용자 표시
-        document.getElementById('currentUserDisplay').textContent = `${loggedInUser.name} (${getRoleName(loggedInUser.role)})`;
+        // 팀장 권한 체크 - 프로젝트 등록은 팀장만 가능
+        const isTeamLead = loggedInUser.role === 'teamlead' || loggedInUser.role === 'admin';
 
         function getRoleName(role) {
             const roleNames = {
@@ -564,26 +729,43 @@
             return roleNames[role] || '사용자';
         }
 
-        function handleExcelUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                    
-                    processExcelData(jsonData);
-                } catch (error) {
-                    console.error('엑셀 파일 읽기 오류:', error);
-                    alert('엑셀 파일 읽기에 실패했습니다.');
-                }
-            };
-            reader.readAsArrayBuffer(file);
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
         }
+
+        // 사용자 정보 표시
+        document.getElementById('userInfo').textContent = `${loggedInUser.name} (${getRoleName(loggedInUser.role)})`;
+
+        // 역할별 메뉴 추가
+        const navMenu = document.getElementById('navMenu');
+        if (loggedInUser.role === 'admin') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='admin.html'">관리자 대시보드</button>
+                <button class="nav-menu-btn" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn active" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else if (loggedInUser.role === 'teamlead') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                <button class="nav-menu-btn" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn active" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn active" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        }
+        
+        let projectData = [];
+        let schedules = [];
+        let currentUser = loggedInUser.name; // 로그인한 사용자의 이름
+        let currentEditingTask = null;
+
+        // 현재 사용자 표시
+        document.getElementById('currentUserDisplay').textContent = `${loggedInUser.name} (${getRoleName(loggedInUser.role)})`;
 
         function processExcelData(data) {
             console.log('📊 엑셀 데이터:', data);
@@ -602,13 +784,13 @@
                 비고: row['비고'] || ''
             }));
 
-            document.getElementById('uploadSection').style.display = 'none';
+            // 메인 컨텐츠 표시
             document.getElementById('mainContent').style.display = 'block';
 
             renderTaskOverview();
             filterMyTasks(); // 자동으로 내 테스크 필터링
             
-            alert(`${data.length}개의 테스크가 업로드되었습니다!`);
+            alert(`${data.length}개의 테스크가 로드되었습니다!`);
         }
 
         function filterMyTasks() {
@@ -650,12 +832,34 @@
 
                 // 테스크 리스트
                 projectTasks.forEach(task => {
-                    const isScheduled = schedules.some(s => s.taskId === task.id);
-                    const scheduledHours = schedules
-                        .filter(s => s.taskId === task.id)
-                        .reduce((sum, s) => sum + calculateHours(s.startTime, s.endTime), 0);
+                    const taskSchedules = schedules.filter(s => s.taskId === task.id);
+                    const isScheduled = taskSchedules.length > 0;
+                    const scheduledHours = taskSchedules.reduce((sum, s) => {
+                        const hours = calculateHours(s.startTime, s.endTime, s.startDate, s.endDate);
+                        return sum + hours;
+                    }, 0);
                     
                     const progress = (scheduledHours / task.할당시간) * 100;
+                    const remainingHours = task.할당시간 - scheduledHours;
+                    const totalBlocks = task.할당시간; // 1시간 = 1블록
+                    const scheduledBlocks = Math.floor(scheduledHours);
+                    const availableBlocks = totalBlocks - scheduledBlocks;
+
+                    // 테트리스 블록 생성
+                    let blocksHTML = '<div class="task-blocks-container">';
+                    for (let i = 0; i < totalBlocks; i++) {
+                        const isBlockScheduled = i < scheduledBlocks;
+                        blocksHTML += `
+                            <div class="task-block ${isBlockScheduled ? 'scheduled' : 'available'}" 
+                                 data-block-index="${i}">
+                                ${i + 1}
+                                <div class="task-block-tooltip">
+                                    ${isBlockScheduled ? '등록됨' : '미등록'} 블록 ${i + 1}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    blocksHTML += '</div>';
 
                     const div = document.createElement('div');
                     div.className = `task-item ${isScheduled ? 'scheduled' : ''}`;
@@ -670,17 +874,18 @@
                                     <span class="task-category-badge badge-tertiary">${task.소분류}</span>
                                 </div>
                                 <div class="task-meta">
-                                    할당: <strong>${task.할당시간}시간</strong>
+                                    할당: <strong>${task.할당시간}시간</strong> | 남은 시간: <strong style="color: ${remainingHours > 0 ? 'var(--primary-blue)' : '#22c55e'}">${remainingHours}시간</strong>
                                 </div>
                                 ${task.비고 ? `<div class="task-meta">📝 ${task.비고}</div>` : ''}
                             </div>
                             ${isScheduled ? '<span class="scheduled-badge">✓ 등록됨</span>' : ''}
                         </div>
-                        <div class="task-progress">
+                        ${blocksHTML}
+                        <div class="task-progress" style="margin-top: 12px;">
                             <div class="progress-bar">
                                 <div class="progress-fill ${progress >= 100 ? 'complete' : ''}" style="width: ${Math.min(progress, 100)}%"></div>
                             </div>
-                            <div class="progress-text">${scheduledHours}h / ${task.할당시간}h (${progress.toFixed(0)}%)</div>
+                            <div class="progress-text">${scheduledHours.toFixed(1)}h / ${task.할당시간}h (${progress.toFixed(0)}%)</div>
                         </div>
                         <button class="schedule-btn" onclick="openScheduleModal('${task.id}')" ${progress >= 100 ? 'disabled' : ''}>
                             ${progress > 0 ? '추가 등록' : '스케줄 등록'}
@@ -861,10 +1066,31 @@
             currentEditingTask = null;
         }
 
-        function calculateHours(startTime, endTime) {
+        function calculateHours(startTime, endTime, startDate = null, endDate = null) {
             const [startH, startM] = startTime.split(':').map(Number);
             const [endH, endM] = endTime.split(':').map(Number);
-            return (endH * 60 + endM - startH * 60 - startM) / 60;
+            
+            let hours = (endH * 60 + endM - startH * 60 - startM) / 60;
+            
+            // 날짜 범위가 있으면 일수에 따라 시간 계산
+            if (startDate && endDate && startDate !== endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                
+                if (daysDiff > 1) {
+                    // 첫날: 시작시간부터 18시까지
+                    const firstDayHours = (18 - startH) + (startM / 60);
+                    // 마지막날: 9시부터 종료시간까지
+                    const lastDayHours = (endH - 9) + (endM / 60);
+                    // 중간날들: 9시부터 18시까지 (9시간)
+                    const middleDaysHours = (daysDiff - 2) * 9;
+                    
+                    hours = firstDayHours + lastDayHours + middleDaysHours;
+                }
+            }
+            
+            return Math.max(0, hours);
         }
 
         function saveSchedule() {
@@ -878,37 +1104,62 @@
                 return;
             }
 
+            // 할당 시간 계산
+            const assignedHours = calculateHours(startTime, endTime, startDate, endDate);
+            
+            // 기존 스케줄의 총 시간 확인
+            const existingHours = schedules
+                .filter(s => s.taskId === currentEditingTask.id)
+                .reduce((sum, s) => sum + calculateHours(s.startTime, s.endTime, s.startDate, s.endDate), 0);
+            
+            // 할당 시간 초과 확인
+            if (existingHours + assignedHours > currentEditingTask.할당시간) {
+                const remaining = currentEditingTask.할당시간 - existingHours;
+                alert(`할당 시간을 초과합니다. 남은 시간: ${remaining.toFixed(1)}시간`);
+                return;
+            }
+
             const schedule = {
+                id: `schedule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 taskId: currentEditingTask.id,
-                user: currentUser, // 이미 이름만 저장되어 있음
-                task: currentEditingTask,
+                userId: loggedInUser.userId || loggedInUser.name, // 사용자 ID
+                userName: currentUser,
+                task: {
+                    id: currentEditingTask.id,
+                    사업명: currentEditingTask.사업명,
+                    대분류: currentEditingTask.대분류,
+                    중분류: currentEditingTask.중분류,
+                    소분류: currentEditingTask.소분류,
+                    할당시간: currentEditingTask.할당시간
+                },
                 startDate,
                 endDate,
                 startTime,
-                endTime
+                endTime,
+                assignedHours: assignedHours,
+                createdAt: new Date().toISOString()
             };
 
             schedules.push(schedule);
             closeModal();
             filterMyTasks();
             
-            // localStorage에 저장
+            // localStorage에 저장 (팀장 뷰에서도 사용할 수 있도록)
             saveToLocalStorage();
             
-            alert('스케줄이 등록되었습니다!');
+            alert(`스케줄이 등록되었습니다! (${assignedHours.toFixed(1)}시간)`);
         }
 
         function saveToLocalStorage() {
             const data = {
                 projectData,
-                schedules
+                schedules,
+                lastUpdated: new Date().toISOString()
             };
             localStorage.setItem('projectSchedules', JSON.stringify(data));
-        }
-
-        function goToCalendar() {
-            saveToLocalStorage();
-            window.location.href = 'my_calendar.html';
+            
+            // 팀장 뷰에서 사용할 수 있도록 별도로도 저장
+            localStorage.setItem('taskSchedules', JSON.stringify(schedules));
         }
 
         // 샘플 데이터 로드
@@ -959,38 +1210,15 @@
 
             processExcelData(sampleData);
         }
-
-        // 역할별 헤더 버튼 생성
-        function createHeaderButtons(role) {
-            const headerButtons = document.getElementById('headerButtons');
-            const buttons = [];
-            
-            // 관리자: 모든 기능
-            if (role === 'admin') {
-                buttons.push('<button class="btn" onclick="location.href=\'admin.html\'">🔧 관리자</button>');
-                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="file-input" onchange="handleExcelUpload(event)">');
-                buttons.push('<button class="btn" onclick="document.getElementById(\'excelFileInput\').click()">📤 엑셀 업로드</button>');
-                buttons.push('<button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>');
-            }
-            // 팀장: 관리자 제외한 모든 기능
-            else if (role === 'teamlead') {
-                buttons.push('<button class="btn" onclick="location.href=\'teamlead.html\'">👔 팀장</button>');
-                buttons.push('<input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" class="file-input" onchange="handleExcelUpload(event)">');
-                buttons.push('<button class="btn" onclick="document.getElementById(\'excelFileInput\').click()">📤 엑셀 업로드</button>');
-                buttons.push('<button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>');
-            }
-            // 팀원: 스케줄 등록과 캘린더만
-            else {
-                buttons.push('<button class="btn btn-primary" onclick="goToCalendar()">📅 캘린더 보기</button>');
-            }
-            
-            headerButtons.innerHTML = buttons.join('');
-        }
         
-        // 페이지 로드 시 저장된 데이터 복원
+        // 페이지 로드 시 저장된 데이터 복원 및 권한별 UI 설정
         window.onload = function() {
-            // 헤더 버튼 생성
-            createHeaderButtons(loggedInUser.role);
+            // 팀장 권한에 따라 샘플 데이터 버튼 표시/숨김
+            if (isTeamLead) {
+                document.getElementById('sampleDataBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('sampleDataBtn').style.display = 'none';
+            }
             
             const saved = localStorage.getItem('projectSchedules');
             if (saved) {
@@ -999,7 +1227,7 @@
                 schedules = data.schedules || [];
                 
                 if (projectData.length > 0) {
-                    document.getElementById('uploadSection').style.display = 'none';
+                    // 데이터가 있으면 메인 컨텐츠 표시
                     document.getElementById('mainContent').style.display = 'block';
                     
                     renderTaskOverview();

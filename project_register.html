@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 등록 - Lego</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        :root {
+            --bg-gray: #f4f6f8;
+            --border-color: #e5e7eb;
+            --primary-blue: #2563eb;
+            --text-dark: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-gray);
+            margin: 0;
+            padding: 0;
+            color: var(--text-dark);
+        }
+
+        /* 상단 네비게이션 */
+        .top-nav {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .nav-left h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-menu-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav-menu-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        .nav-menu-btn.active {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-dark);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        /* 메인 레이아웃 */
+        .main-container {
+            padding: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* 왼쪽: 블록 영역 */
+        .blocks-section {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            min-height: 600px;
+        }
+
+        .blocks-section h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .blocks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .task-block-group {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid;
+        }
+
+        .task-block-group.planning {
+            border-left-color: #3b82f6;
+        }
+
+        .task-block-group.development {
+            border-left-color: #22c55e;
+        }
+
+        .task-block-group.design {
+            border-left-color: #eab308;
+        }
+
+        .task-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .task-block-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .task-block-meta {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .task-blocks-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .task-block {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            border: 2px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .task-block:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .task-block.planning {
+            background: #dbeafe;
+            border-color: #3b82f6;
+            color: #1e40af;
+        }
+
+        .task-block.planning.scheduled-active {
+            background: #3b82f6 !important;
+            border-color: #2563eb !important;
+            color: white !important;
+            opacity: 1;
+        }
+
+        .task-block.development {
+            background: #dcfce7;
+            border-color: #22c55e;
+            color: #166534;
+        }
+
+        .task-block.development.scheduled-active {
+            background: #22c55e !important;
+            border-color: #16a34a !important;
+            color: white !important;
+            opacity: 1;
+        }
+
+        .task-block.design {
+            background: #fef9c3;
+            border-color: #eab308;
+            color: #854d0e;
+        }
+
+        .task-block.design.scheduled-active {
+            background: #eab308 !important;
+            border-color: #ca8a04 !important;
+            color: white !important;
+            opacity: 1;
+        }
+
+        .task-block.scheduled {
+            background: #9ca3af !important;
+            border-color: #6b7280 !important;
+            color: white !important;
+            opacity: 0.7;
+        }
+
+        .task-block-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 5px;
+            background: #1e293b;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: normal;
+            min-width: 180px;
+            max-width: 250px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            line-height: 1.5;
+        }
+        
+        .task-block-tooltip div {
+            margin-bottom: 2px;
+        }
+        
+        .task-block-tooltip div:last-child {
+            margin-bottom: 0;
+        }
+
+        /* 툴팁은 JS로 제어하므로 CSS hover 제거 */
+
+        /* 오른쪽: 팀원 리스트 */
+        .team-list-section {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            max-height: 800px;
+            overflow-y: auto;
+        }
+
+        .team-list-section h2 {
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filter-btn {
+            flex: 1;
+            padding: 8px 16px;
+            border: 2px solid var(--border-color);
+            background: white;
+            color: var(--text-dark);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary-blue);
+            background: #eff6ff;
+        }
+
+        .filter-btn.active {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+
+        .team-member-card {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .member-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .member-task-count {
+            background: var(--primary-blue);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .member-task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .member-task-item {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+        }
+
+        .member-task-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 6px;
+        }
+
+        .member-task-title {
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .member-task-hours {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        .member-task-categories {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .category-tag {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .category-tag.primary {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .category-tag.secondary {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+
+        .category-tag.tertiary {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* 업로드 섹션 */
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .upload-section h2 {
+            margin: 0 0 15px 0;
+            font-size: 1.5rem;
+            color: var(--primary-blue);
+        }
+
+        .upload-section p {
+            color: #64748b;
+            margin: 10px 0;
+        }
+
+        .btn {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 상단 네비게이션 -->
+    <div class="top-nav">
+        <div class="nav-left">
+            <h1 onclick="location.href='my_calendar.html'">🧱 Lego</h1>
+            <div class="nav-menu" id="navMenu">
+                <button class="nav-menu-btn" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                <!-- 역할별 메뉴는 JS에서 동적으로 추가 -->
+            </div>
+        </div>
+        <div class="nav-right">
+            <div class="user-info" id="userInfo"></div>
+            <button class="logout-btn" onclick="logout()">로그아웃</button>
+        </div>
+    </div>
+
+    <!-- 메인 컨테이너 -->
+    <div class="main-container">
+        <!-- 업로드 섹션 -->
+        <div class="upload-section" id="uploadSection">
+            <h2>📄 프로젝트 엑셀 파일 등록</h2>
+            <p>엑셀 파일을 업로드하여 프로젝트 테스크를 등록하세요</p>
+            <input type="file" id="excelFileInput" class="file-input" accept=".xlsx,.xls" onchange="handleExcelUpload(event)">
+            <button class="btn" onclick="document.getElementById('excelFileInput').click()">
+                📁 엑셀로 등록하기
+            </button>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-top: 15px;">
+                <strong>필수 컬럼:</strong> 소속, 이름, 대분류, 중분류, 소분류, 기준시간, 할당시간
+            </p>
+        </div>
+
+        <!-- 메인 레이아웃 (데이터 로드 후 표시) -->
+        <div id="mainContent" style="display: none;">
+            <div class="main-layout">
+                <!-- 왼쪽: 테스크 블록 영역 -->
+                <div class="blocks-section">
+                    <h2>🧱 프로젝트 테스크 블록</h2>
+                    <div class="blocks-container" id="blocksContainer">
+                        <!-- 동적 생성 -->
+                    </div>
+                </div>
+
+                <!-- 오른쪽: 팀원 리스트 -->
+                <div class="team-list-section">
+                    <h2>👥 테스크 리스트</h2>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" id="filterByMember" onclick="changeFilter('member')">
+                            👤 팀원별
+                        </button>
+                        <button class="filter-btn" id="filterByTask" onclick="changeFilter('task')">
+                            📋 테스크별
+                        </button>
+                    </div>
+                    <div id="teamListContainer">
+                        <!-- 동적 생성 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 로그인 체크
+        const loggedInUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        
+        if (!loggedInUser) {
+            alert('로그인이 필요합니다.');
+            window.location.href = 'login.html';
+        }
+
+        // 팀장 권한 체크
+        const isTeamLead = loggedInUser.role === 'teamlead' || loggedInUser.role === 'admin';
+        
+        if (!isTeamLead) {
+            alert('프로젝트 등록은 팀장만 가능합니다.');
+            window.location.href = 'task_schedule.html';
+        }
+
+        function getRoleName(role) {
+            const roleNames = {
+                'admin': '관리자',
+                'teamlead': '팀장',
+                'user': '팀원'
+            };
+            return roleNames[role] || '사용자';
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // 사용자 정보 표시
+        document.getElementById('userInfo').textContent = `${loggedInUser.name} (${getRoleName(loggedInUser.role)})`;
+
+        // 역할별 메뉴 추가
+        const navMenu = document.getElementById('navMenu');
+        if (loggedInUser.role === 'admin') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='admin.html'">관리자 대시보드</button>
+                <button class="nav-menu-btn" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn active" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else if (loggedInUser.role === 'teamlead') {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                <button class="nav-menu-btn" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                <button class="nav-menu-btn active" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        } else {
+            navMenu.innerHTML += `
+                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
+            `;
+        }
+
+        let projectData = [];
+        let schedules = [];
+        let currentFilter = 'member'; // 'member' or 'task'
+
+        // 카테고리 매핑 (대분류 -> 소분류)
+        function getCategoryFromMajor(majorCategory) {
+            if (majorCategory.includes('기획') || majorCategory.includes('행사') || majorCategory.includes('경영')) {
+                return 'planning';
+            } else if (majorCategory.includes('개발') || majorCategory.includes('재무')) {
+                return 'development';
+            } else if (majorCategory.includes('디자인') || majorCategory.includes('시각')) {
+                return 'design';
+            }
+            return 'planning'; // 기본값
+        }
+
+        // 시간 계산 함수 (startTime, endTime, startDate, endDate를 고려)
+        function calculateHours(startTime, endTime, startDate = null, endDate = null) {
+            const [startH, startM] = startTime.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+            
+            let hours = (endH * 60 + endM - startH * 60 - startM) / 60;
+            
+            // 날짜 범위가 있으면 일수에 따라 시간 계산
+            if (startDate && endDate && startDate !== endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                
+                if (daysDiff > 1) {
+                    // 첫날: 시작시간부터 18시까지
+                    const firstDayHours = (18 - startH) + (startM / 60);
+                    // 마지막날: 9시부터 종료시간까지
+                    const lastDayHours = (endH - 9) + (endM / 60);
+                    // 중간날들: 9시부터 18시까지 (9시간)
+                    const middleDaysHours = (daysDiff - 2) * 9;
+                    
+                    hours = firstDayHours + lastDayHours + middleDaysHours;
+                }
+            }
+            
+            return Math.max(0, hours);
+        }
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    processExcelData(jsonData);
+                } catch (error) {
+                    console.error('엑셀 파일 읽기 오류:', error);
+                    alert('엑셀 파일 읽기에 실패했습니다.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelData(data) {
+            console.log('📊 엑셀 데이터:', data);
+            
+            projectData = data.map((row, index) => ({
+                id: `task-${String(index + 1).padStart(3, '0')}`,
+                소속: row['소속'] || '',
+                이름: row['이름'] || '',
+                부서: row['부서'] || '',
+                사업명: row['사업명'] || '',
+                대분류: row['대분류'] || '',
+                중분류: row['중분류'] || '',
+                소분류: row['소분류'] || '',
+                기준시간: parseInt(row['기준시간']) || 0,
+                할당시간: parseInt(row['할당시간']) || 0,
+                비고: row['비고'] || ''
+            }));
+
+            // 업로드 섹션 숨기고 메인 컨텐츠 표시
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+
+            // 스케줄이 없으면 샘플 스케줄 생성
+            if (schedules.length === 0) {
+                schedules = createSampleSchedules();
+            }
+
+            // localStorage에 저장
+            saveToLocalStorage();
+
+            // 블록 및 리스트 렌더링
+            renderTaskBlocks();
+            renderTeamList();
+            
+            alert(`${data.length}개의 테스크가 등록되었습니다!`);
+        }
+
+        function renderTaskBlocks() {
+            const container = document.getElementById('blocksContainer');
+            container.innerHTML = '';
+
+            if (projectData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📦</div>
+                        <p>등록된 테스크가 없습니다</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // 프로젝트별로 그룹화
+            const projectGroups = {};
+            projectData.forEach(task => {
+                if (!projectGroups[task.사업명]) {
+                    projectGroups[task.사업명] = [];
+                }
+                projectGroups[task.사업명].push(task);
+            });
+
+            // 각 프로젝트별로 렌더링
+            Object.keys(projectGroups).forEach(projectName => {
+                const tasks = projectGroups[projectName];
+                
+                // 테스크별로 그룹화 (중분류 기준)
+                const taskGroups = {};
+                tasks.forEach(task => {
+                    const key = `${task.대분류}-${task.중분류}-${task.소분류}`;
+                    if (!taskGroups[key]) {
+                        taskGroups[key] = {
+                            대분류: task.대분류,
+                            중분류: task.중분류,
+                            소분류: task.소분류,
+                            기준시간: task.기준시간,
+                            할당: []
+                        };
+                    }
+                    if (task.할당시간 > 0) {
+                        taskGroups[key].할당.push({
+                            이름: task.이름,
+                            할당시간: task.할당시간
+                        });
+                    }
+                });
+
+                // 각 테스크 그룹 렌더링
+                Object.values(taskGroups).forEach(taskGroup => {
+                    const category = getCategoryFromMajor(taskGroup.대분류);
+                    const totalBlocks = taskGroup.기준시간;
+                    
+                    // 할당된 블록 수 계산
+                    let assignedBlocks = taskGroup.할당.reduce((sum, a) => sum + a.할당시간, 0);
+                    
+                    // 할당시간의 합이 기준시간과 일치하도록 조정
+                    if (assignedBlocks !== totalBlocks && assignedBlocks > 0 && totalBlocks > 0) {
+                        const ratio = totalBlocks / assignedBlocks;
+                        taskGroup.할당.forEach(assignment => {
+                            assignment.할당시간 = Math.round(assignment.할당시간 * ratio);
+                        });
+                        assignedBlocks = taskGroup.할당.reduce((sum, a) => sum + a.할당시간, 0);
+                        // 마지막 할당에 차이 조정
+                        if (assignedBlocks !== totalBlocks) {
+                            const diff = totalBlocks - assignedBlocks;
+                            if (taskGroup.할당.length > 0) {
+                                taskGroup.할당[taskGroup.할당.length - 1].할당시간 += diff;
+                                assignedBlocks = totalBlocks;
+                            }
+                        }
+                    } else if (assignedBlocks === 0 && totalBlocks > 0) {
+                        // 할당이 없으면 기준시간만큼 할당
+                        assignedBlocks = totalBlocks;
+                    }
+                    
+                    // 사람별로 그룹화하고, 등록된 것과 안된 것을 적절히 섞기
+                    // 1. 등록된 것과 안된 것 분리
+                    const scheduledAssignments = [];
+                    const unscheduledAssignments = [];
+                    
+                    taskGroup.할당.forEach(assignment => {
+                        const task = projectData.find(t => 
+                            t.이름 === assignment.이름 &&
+                            t.대분류 === taskGroup.대분류 &&
+                            t.중분류 === taskGroup.중분류 &&
+                            t.소분류 === taskGroup.소분류
+                        );
+                        if (task && isTaskScheduled(task.id, assignment.이름)) {
+                            scheduledAssignments.push(assignment);
+                        } else {
+                            unscheduledAssignments.push(assignment);
+                        }
+                    });
+                    
+                    // 2. 사람별로 그룹화 (이름 순으로 정렬하여 일관성 유지)
+                    const groupedByPerson = {};
+                    [...scheduledAssignments, ...unscheduledAssignments].forEach(assignment => {
+                        if (!groupedByPerson[assignment.이름]) {
+                            groupedByPerson[assignment.이름] = [];
+                        }
+                        groupedByPerson[assignment.이름].push(assignment);
+                    });
+                    
+                    // 3. 사람 이름 순으로 정렬하여 왼쪽부터 채우기
+                    const sortedPersonNames = Object.keys(groupedByPerson).sort();
+                    
+                    // 4. 등록된 것과 안된 것을 반반 섞어서 배치
+                    const reorderedAssignments = [];
+                    const personScheduledMap = {}; // 각 사람의 등록 여부 추적
+                    
+                    sortedPersonNames.forEach(personName => {
+                        const personAssignments = groupedByPerson[personName];
+                        personAssignments.forEach(assignment => {
+                            const task = projectData.find(t => 
+                                t.이름 === assignment.이름 &&
+                                t.대분류 === taskGroup.대분류 &&
+                                t.중분류 === taskGroup.중분류 &&
+                                t.소분류 === taskGroup.소분류
+                            );
+                            personScheduledMap[assignment.이름] = task && isTaskScheduled(task.id, assignment.이름);
+                            reorderedAssignments.push(assignment);
+                        });
+                    });
+                    
+                    // 실제 스케줄에 등록된 블록 정보 수집
+                    const scheduledBlockInfo = []; // [{startIndex, endIndex, userName, startDate, endDate}, ...]
+                    let currentBlockIndex = 0;
+                    
+                    reorderedAssignments.forEach(assignment => {
+                        // 해당 테스크 찾기
+                        const task = projectData.find(t => 
+                            t.이름 === assignment.이름 &&
+                            t.대분류 === taskGroup.대분류 &&
+                            t.중분류 === taskGroup.중분류 &&
+                            t.소분류 === taskGroup.소분류
+                        );
+                        if (task && isTaskScheduled(task.id, assignment.이름)) {
+                            // 스케줄 정보 가져오기
+                            const schedule = schedules.find(s => 
+                                s.taskId === task.id && 
+                                (s.userName === assignment.이름 || s.user === assignment.이름)
+                            );
+                            if (schedule) {
+                                // 등록 시간은 할당 시간과 동일해야 함
+                                // 실제 등록된 블록 수는 할당시간과 동일
+                                const actualScheduledBlocks = assignment.할당시간;
+                                
+                                // 할당된 블록 범위 내에서 실제 등록된 블록만 표시
+                                const startIndex = currentBlockIndex;
+                                const endIndex = currentBlockIndex + actualScheduledBlocks - 1;
+                                scheduledBlockInfo.push({
+                                    startIndex,
+                                    endIndex,
+                                    userName: assignment.이름,
+                                    startDate: schedule.startDate,
+                                    endDate: schedule.endDate,
+                                    startTime: schedule.startTime,
+                                    endTime: schedule.endTime,
+                                    actualHours: assignment.할당시간, // 할당 시간과 동일하게 설정
+                                    assignedHours: assignment.할당시간,
+                                    assignedStartIndex: currentBlockIndex,
+                                    assignedEndIndex: currentBlockIndex + assignment.할당시간 - 1
+                                });
+                            }
+                        }
+                        currentBlockIndex += assignment.할당시간;
+                    });
+                    
+                    // 실제 등록된 시간 계산 (시간 단위) - 할당 시간의 합
+                    const totalScheduledHours = scheduledBlockInfo.reduce((sum, info) => {
+                        return sum + (info.actualHours || info.assignedHours || 0);
+                    }, 0);
+                    const scheduledBlocks = scheduledBlockInfo.reduce((sum, info) => sum + (info.endIndex - info.startIndex + 1), 0);
+                    
+                    // 같은 사람, 같은 날짜, 연속된 블록을 그룹으로 묶기
+                    // startIndex 순서로 정렬
+                    scheduledBlockInfo.sort((a, b) => a.startIndex - b.startIndex);
+                    
+                    const blockGroups = [];
+                    scheduledBlockInfo.forEach((info, idx) => {
+                        // 이전 그룹과 같은 사람, 같은 날짜, 연속된 블록인지 확인
+                        const prevGroup = blockGroups[blockGroups.length - 1];
+                        if (prevGroup && 
+                            prevGroup.userName === info.userName &&
+                            prevGroup.startDate === info.startDate &&
+                            prevGroup.endIndex + 1 === info.startIndex) {
+                            // 이전 그룹에 추가
+                            prevGroup.endIndex = info.endIndex;
+                            prevGroup.endDate = info.endDate;
+                            
+                            // 종료 시간 계산: 마지막 블록의 시작 시간 + 할당 시간
+                            const [startH, startM] = info.startTime.split(':').map(Number);
+                            const assignedHours = info.assignedHours || info.actualHours || 0;
+                            const endH = startH + Math.floor(assignedHours);
+                            const endM = startM + Math.round((assignedHours % 1) * 60);
+                            const finalEndH = endH + Math.floor(endM / 60);
+                            const finalEndM = endM % 60;
+                            prevGroup.endTime = `${String(finalEndH).padStart(2, '0')}:${String(finalEndM).padStart(2, '0')}`;
+                            
+                            prevGroup.actualHours += (info.actualHours || info.assignedHours || 0);
+                            prevGroup.assignedHours += (info.assignedHours || 0);
+                        } else {
+                            // 새 그룹 생성
+                            // 종료 시간 계산: 시작 시간 + 할당 시간
+                            const [startH, startM] = info.startTime.split(':').map(Number);
+                            const assignedHours = info.assignedHours || info.actualHours || 0;
+                            const endH = startH + Math.floor(assignedHours);
+                            const endM = startM + Math.round((assignedHours % 1) * 60);
+                            const finalEndH = endH + Math.floor(endM / 60);
+                            const finalEndM = endM % 60;
+                            const calculatedEndTime = `${String(finalEndH).padStart(2, '0')}:${String(finalEndM).padStart(2, '0')}`;
+                            
+                            blockGroups.push({
+                                groupId: `group-${taskGroup.중분류}-${idx}`,
+                                startIndex: info.startIndex,
+                                endIndex: info.endIndex,
+                                userName: info.userName,
+                                startDate: info.startDate,
+                                endDate: info.endDate,
+                                startTime: info.startTime,
+                                endTime: calculatedEndTime,
+                                actualHours: info.actualHours || info.assignedHours || 0,
+                                assignedHours: info.assignedHours || 0
+                            });
+                        }
+                    });
+                    
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = `task-block-group ${category}`;
+                    
+                    groupDiv.innerHTML = `
+                        <div class="task-block-header">
+                            <div>
+                                <div class="task-block-title">${taskGroup.중분류}</div>
+                                <div class="task-block-meta">
+                                    ${taskGroup.대분류} > ${taskGroup.소분류} | 기준: ${taskGroup.기준시간}시간 | 등록: ${totalScheduledHours.toFixed(1)}시간
+                                </div>
+                            </div>
+                        </div>
+                        <div class="task-blocks-grid" id="blocks-${taskGroup.중분류}"></div>
+                    `;
+                    
+                    const blocksGrid = groupDiv.querySelector(`#blocks-${taskGroup.중분류}`);
+                    
+                    // 블록 생성
+                    for (let i = 0; i < totalBlocks; i++) {
+                        const isAssigned = i < assignedBlocks;
+                        // 이 블록이 등록된 블록 범위에 속하는지 확인
+                        const blockScheduleInfo = scheduledBlockInfo.find(info => 
+                            i >= info.startIndex && i <= info.endIndex
+                        );
+                        // 그룹 정보 찾기
+                        const blockGroup = blockGroups.find(group => 
+                            i >= group.startIndex && i <= group.endIndex
+                        );
+                        const isScheduled = !!blockScheduleInfo;
+                        
+                        const block = document.createElement('div');
+                        // 등록된 것은 진한 색상, 할당만 되고 미등록은 회색, 할당 안된 것도 회색
+                        if (isScheduled) {
+                            block.className = `task-block ${category} scheduled-active`; // 진한 색상
+                            if (blockGroup) {
+                                block.setAttribute('data-group-id', blockGroup.groupId);
+                            }
+                        } else {
+                            block.className = `task-block ${category} scheduled`; // 회색으로 표시
+                        }
+                        block.setAttribute('data-block-index', i);
+                        
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'task-block-tooltip';
+                        
+                        // 모든 블록에 툴팁 내용 설정 (그룹에 속한 경우 그룹 정보 사용)
+                        if (isScheduled && blockGroup) {
+                            // 그룹 정보 사용 (연속된 블록) - 모든 그룹 블록에 같은 내용
+                            const dateStr = blockGroup.startDate === blockGroup.endDate 
+                                ? blockGroup.startDate 
+                                : `${blockGroup.startDate} ~ ${blockGroup.endDate}`;
+                            
+                            const blockRange = blockGroup.startIndex === blockGroup.endIndex 
+                                ? `${blockGroup.startIndex + 1}` 
+                                : `${blockGroup.startIndex + 1}~${blockGroup.endIndex + 1}`;
+                            
+                            tooltip.innerHTML = `
+                                <div style="font-weight: 600; margin-bottom: 4px;">등록됨 (블록 ${blockRange}/${totalBlocks})</div>
+                                <div>👤 ${blockGroup.userName}</div>
+                                <div>📅 ${dateStr}</div>
+                                <div>⏰ ${blockGroup.startTime} ~ ${blockGroup.endTime}</div>
+                                <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
+                                    <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
+                                    <div>✅ 등록시간: ${blockGroup.actualHours}시간</div>
+                                    ${blockGroup.assignedHours > 0 ? `<div>📋 할당시간: ${blockGroup.assignedHours}시간</div>` : ''}
+                                </div>
+                            `;
+                        } else if (isScheduled && !blockGroup && blockScheduleInfo) {
+                            // 개별 블록 정보 (그룹에 속하지 않는 경우)
+                            const dateStr = blockScheduleInfo.startDate === blockScheduleInfo.endDate 
+                                ? blockScheduleInfo.startDate 
+                                : `${blockScheduleInfo.startDate} ~ ${blockScheduleInfo.endDate}`;
+                            
+                            const actualHours = blockScheduleInfo.actualHours || calculateHours(
+                                blockScheduleInfo.startTime,
+                                blockScheduleInfo.endTime,
+                                blockScheduleInfo.startDate,
+                                blockScheduleInfo.endDate
+                            );
+                            const assignedHours = blockScheduleInfo.assignedHours || 0;
+                            
+                            tooltip.innerHTML = `
+                                <div style="font-weight: 600; margin-bottom: 4px;">등록됨 (${i + 1}/${totalBlocks})</div>
+                                <div>👤 ${blockScheduleInfo.userName}</div>
+                                <div>📅 ${dateStr}</div>
+                                <div>⏰ ${blockScheduleInfo.startTime} ~ ${blockScheduleInfo.endTime}</div>
+                                <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
+                                    <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
+                                    <div>✅ 등록시간: ${actualHours}시간</div>
+                                    ${assignedHours > 0 ? `<div>📋 할당시간: ${assignedHours}시간</div>` : ''}
+                                </div>
+                            `;
+                        } else if (isAssigned) {
+                            tooltip.innerHTML = `
+                                <div style="font-weight: 600; margin-bottom: 4px;">할당됨 (미등록) (${i + 1}/${totalBlocks})</div>
+                                <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
+                                    <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
+                                </div>
+                            `;
+                        } else {
+                            tooltip.innerHTML = `
+                                <div style="font-weight: 600; margin-bottom: 4px;">미할당 (${i + 1}/${totalBlocks})</div>
+                                <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
+                                    <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
+                                </div>
+                            `;
+                        }
+                        block.appendChild(tooltip);
+                        
+                        // 호버 이벤트 추가 (개별 블록 및 그룹 모두)
+                        block.addEventListener('mouseenter', function() {
+                            // 현재 블록의 툴팁만 표시
+                            const currentTooltip = this.querySelector('.task-block-tooltip');
+                            if (currentTooltip) {
+                                currentTooltip.style.opacity = '1';
+                            }
+                            
+                            // 그룹에 속한 경우 그룹 전체 블록 확대 효과
+                            if (blockGroup) {
+                                const groupId = this.getAttribute('data-group-id');
+                                if (groupId) {
+                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                    groupBlocks.forEach(groupBlock => {
+                                        groupBlock.style.transform = 'scale(1.15)';
+                                        groupBlock.style.zIndex = '20';
+                                        groupBlock.style.transition = 'transform 0.2s ease';
+                                    });
+                                }
+                            }
+                        });
+                        
+                        block.addEventListener('mouseleave', function() {
+                            // 현재 블록의 툴팁만 숨김
+                            const currentTooltip = this.querySelector('.task-block-tooltip');
+                            if (currentTooltip) {
+                                currentTooltip.style.opacity = '0';
+                            }
+                            
+                            // 그룹에 속한 경우 그룹 전체 블록 확대 효과 제거
+                            if (blockGroup) {
+                                const groupId = this.getAttribute('data-group-id');
+                                if (groupId) {
+                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                    groupBlocks.forEach(groupBlock => {
+                                        groupBlock.style.transform = '';
+                                        groupBlock.style.zIndex = '';
+                                    });
+                                }
+                            }
+                        });
+                        
+                        blocksGrid.appendChild(block);
+                    }
+                    
+                    container.appendChild(groupDiv);
+                });
+            });
+        }
+
+        function changeFilter(filterType) {
+            currentFilter = filterType;
+            
+            // 버튼 활성화 상태 업데이트
+            document.getElementById('filterByMember').classList.toggle('active', filterType === 'member');
+            document.getElementById('filterByTask').classList.toggle('active', filterType === 'task');
+            
+            // 리스트 재렌더링
+            renderTeamList();
+        }
+
+        function renderTeamList() {
+            const container = document.getElementById('teamListContainer');
+            container.innerHTML = '';
+
+            if (projectData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <p>팀원 정보가 없습니다</p>
+                    </div>
+                `;
+                return;
+            }
+
+            if (currentFilter === 'member') {
+                renderByMember(container);
+            } else {
+                renderByTask(container);
+            }
+        }
+
+        // 스케줄에 등록되었는지 확인
+        function isTaskScheduled(taskId, userName) {
+            if (!schedules || schedules.length === 0) return false;
+            return schedules.some(s => 
+                s && s.taskId === taskId && 
+                (s.userName === userName || s.user === userName)
+            );
+        }
+
+        function renderByMember(container) {
+            // 팀원별로 그룹화 (할당 시간이 0인 것도 포함)
+            const memberGroups = {};
+            projectData.forEach(task => {
+                // 할당 시간이 0이어도 표시
+                if (!memberGroups[task.이름]) {
+                    memberGroups[task.이름] = {
+                        이름: task.이름,
+                        소속: task.소속,
+                        부서: task.부서,
+                        테스크: []
+                    };
+                }
+                memberGroups[task.이름].테스크.push(task);
+            });
+
+            // 팀원별로 렌더링
+            Object.values(memberGroups).forEach(member => {
+                const totalHours = member.테스크.reduce((sum, t) => sum + t.할당시간, 0);
+                
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'team-member-card';
+                
+                let taskListHTML = '';
+                member.테스크.forEach(task => {
+                    const isScheduled = isTaskScheduled(task.id, task.이름);
+                    const scheduledClass = isScheduled ? '' : 'style="opacity: 0.6; border-left: 3px solid #f59e0b;"';
+                    const scheduledBadge = isScheduled 
+                        ? '<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">✓ 등록됨</span>'
+                        : '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">⏰ 미등록</span>';
+                    
+                    taskListHTML += `
+                        <div class="member-task-item" ${scheduledClass}>
+                            <div class="member-task-item-header">
+                                <div>
+                                    <div class="member-task-title">${task.중분류}</div>
+                                    ${scheduledBadge}
+                                </div>
+                                <div class="member-task-hours">${task.할당시간}h</div>
+                            </div>
+                            <div class="member-task-categories">
+                                <span class="category-tag primary">${task.대분류}</span>
+                                <span class="category-tag secondary">${task.중분류}</span>
+                                <span class="category-tag tertiary">${task.소분류}</span>
+                            </div>
+                            ${task.비고 ? `<div style="margin-top: 6px; font-size: 0.75rem; color: #64748b;">📝 ${task.비고}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                cardDiv.innerHTML = `
+                    <div class="member-header">
+                        <div>
+                            <div class="member-name">${member.이름}</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                                ${member.소속} ${member.부서 ? `· ${member.부서}` : ''}
+                            </div>
+                        </div>
+                        <div class="member-task-count">${member.테스크.length}개</div>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">
+                        총 할당 시간: <strong style="color: var(--primary-blue);">${totalHours}시간</strong>
+                    </div>
+                    <div class="member-task-list">
+                        ${taskListHTML}
+                    </div>
+                `;
+                
+                container.appendChild(cardDiv);
+            });
+        }
+
+        function renderByTask(container) {
+            // 테스크별로 그룹화 (소분류 기준)
+            const taskGroups = {};
+            projectData.forEach(task => {
+                const key = `${task.대분류}-${task.중분류}-${task.소분류}`;
+                if (!taskGroups[key]) {
+                    taskGroups[key] = {
+                        대분류: task.대분류,
+                        중분류: task.중분류,
+                        소분류: task.소분류,
+                        기준시간: task.기준시간,
+                        할당: []
+                    };
+                }
+                if (task.할당시간 > 0) {
+                    taskGroups[key].할당.push({
+                        이름: task.이름,
+                        소속: task.소속,
+                        부서: task.부서,
+                        할당시간: task.할당시간,
+                        비고: task.비고
+                    });
+                }
+            });
+
+            // 테스크별로 렌더링
+            Object.values(taskGroups).forEach(taskGroup => {
+                const totalAllocated = taskGroup.할당.reduce((sum, a) => sum + a.할당시간, 0);
+                const category = getCategoryFromMajor(taskGroup.대분류);
+                
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'team-member-card';
+                
+                let memberListHTML = '';
+                taskGroup.할당.forEach(assignment => {
+                    // 해당 테스크의 taskId 찾기
+                    const task = projectData.find(t => 
+                        t.이름 === assignment.이름 &&
+                        t.대분류 === taskGroup.대분류 &&
+                        t.중분류 === taskGroup.중분류 &&
+                        t.소분류 === taskGroup.소분류 &&
+                        t.할당시간 === assignment.할당시간
+                    );
+                    const isScheduled = task ? isTaskScheduled(task.id, assignment.이름) : false;
+                    const scheduledClass = isScheduled ? '' : 'style="opacity: 0.6; border-left: 3px solid #f59e0b;"';
+                    const scheduledBadge = isScheduled 
+                        ? '<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 8px;">✓ 등록됨</span>'
+                        : '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 8px;">⏰ 미등록</span>';
+                    
+                    memberListHTML += `
+                        <div class="member-task-item" ${scheduledClass}>
+                            <div class="member-task-item-header">
+                                <div>
+                                    <div class="member-task-title">${assignment.이름}${scheduledBadge}</div>
+                                </div>
+                                <div class="member-task-hours">${assignment.할당시간}h</div>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
+                                ${assignment.소속} ${assignment.부서 ? `· ${assignment.부서}` : ''}
+                            </div>
+                            ${assignment.비고 ? `<div style="margin-top: 6px; font-size: 0.75rem; color: #64748b;">📝 ${assignment.비고}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                const categoryClass = category === 'planning' ? 'primary' : category === 'development' ? 'secondary' : 'tertiary';
+                
+                cardDiv.innerHTML = `
+                    <div class="member-header">
+                        <div>
+                            <div class="member-name">${taskGroup.중분류}</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
+                                ${taskGroup.대분류} > ${taskGroup.소분류}
+                            </div>
+                        </div>
+                        <div class="member-task-count">${taskGroup.할당.length}명</div>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">
+                        기준 시간: <strong>${taskGroup.기준시간}시간</strong> | 
+                        할당 시간: <strong style="color: var(--primary-blue);">${totalAllocated}시간</strong>
+                    </div>
+                    <div class="member-task-list">
+                        ${memberListHTML}
+                    </div>
+                `;
+                
+                container.appendChild(cardDiv);
+            });
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                projectData,
+                schedules,
+                lastUpdated: new Date().toISOString()
+            };
+            localStorage.setItem('projectSchedules', JSON.stringify(data));
+        }
+
+        // 샘플 스케줄 데이터 생성 (등록된 것과 안된 것을 반반 섞기)
+        function createSampleSchedules() {
+            if (projectData.length === 0) return [];
+            
+            // 일부 테스크에 샘플 스케줄 추가
+            const sampleSchedules = [];
+            let scheduleCount = 0;
+            const today = new Date();
+            const scheduledTaskIds = new Set(); // 이미 등록된 taskId 추적
+            
+            // 테스크를 사람별로 그룹화
+            const tasksByPerson = {};
+            projectData.forEach(task => {
+                if (task.할당시간 > 0) {
+                    if (!tasksByPerson[task.이름]) {
+                        tasksByPerson[task.이름] = [];
+                    }
+                    tasksByPerson[task.이름].push(task);
+                }
+            });
+            
+            // 각 사람별로 테스크를 섞어서 반반 등록
+            Object.keys(tasksByPerson).sort().forEach(personName => {
+                const personTasks = tasksByPerson[personName];
+                // 각 사람의 테스크 중 절반만 등록
+                const tasksToSchedule = Math.ceil(personTasks.length / 2);
+                
+                personTasks.slice(0, tasksToSchedule).forEach((task, idx) => {
+                    if (!scheduledTaskIds.has(task.id)) {
+                        // 전체 할당 시간 등록 (절반만 등록하는 게 아니라, 절반의 테스크만 등록)
+                        const scheduledHours = task.할당시간;
+                        if (scheduledHours > 0) {
+                            const startDate = new Date(today);
+                            startDate.setDate(today.getDate() + scheduleCount * 2);
+                            
+                            // 할당 시간에 맞게 정확한 종료 시간 계산
+                            // 시작 시간: 09:00
+                            // 종료 시간: 09:00 + 할당 시간
+                            const startHour = 9;
+                            const startMinute = 0;
+                            const endHour = startHour + Math.floor(scheduledHours);
+                            const endMinute = startMinute + Math.round((scheduledHours % 1) * 60);
+                            const finalEndHour = endHour + Math.floor(endMinute / 60);
+                            const finalEndMinute = endMinute % 60;
+                            
+                            // 종료일 계산 (하루 8시간 기준)
+                            let endDate = new Date(startDate);
+                            const days = Math.floor(scheduledHours / 8);
+                            if (days > 0) {
+                                endDate.setDate(startDate.getDate() + days);
+                                // 남은 시간이 있으면 다음 날로
+                                if (scheduledHours % 8 > 0) {
+                                    endDate.setDate(endDate.getDate() + 1);
+                                }
+                            } else {
+                                // 하루 내에 끝나는 경우
+                                endDate = new Date(startDate);
+                            }
+                            
+                            const endTimeStr = `${String(finalEndHour).padStart(2, '0')}:${String(finalEndMinute).padStart(2, '0')}`;
+                            
+                            sampleSchedules.push({
+                                id: `schedule-${Date.now()}-${scheduleCount}`,
+                                taskId: task.id,
+                                userId: task.이름,
+                                userName: task.이름,
+                                task: {
+                                    id: task.id,
+                                    사업명: task.사업명,
+                                    대분류: task.대분류,
+                                    중분류: task.중분류,
+                                    소분류: task.소분류,
+                                    할당시간: task.할당시간
+                                },
+                                startDate: startDate.toISOString().split('T')[0],
+                                endDate: endDate.toISOString().split('T')[0],
+                                startTime: '09:00',
+                                endTime: endTimeStr,
+                                assignedHours: scheduledHours,
+                                createdAt: new Date().toISOString()
+                            });
+                            scheduledTaskIds.add(task.id);
+                            scheduleCount++;
+                        }
+                    }
+                });
+            });
+            
+            return sampleSchedules;
+        }
+
+        // 페이지 로드 시 - 항상 업로드 섹션만 표시
+        window.onload = function() {
+            // localStorage에 데이터가 있어도 처음에는 업로드 섹션만 표시
+            const saved = localStorage.getItem('projectSchedules');
+            if (saved) {
+                const data = JSON.parse(saved);
+                projectData = data.projectData || [];
+                schedules = data.schedules || [];
+                
+                // 스케줄이 없거나 적으면 샘플 스케줄 생성/추가 (절반만 등록)
+                if (projectData.length > 0 && schedules.length === 0) {
+                    const newSchedules = createSampleSchedules();
+                    schedules = newSchedules;
+                    saveToLocalStorage();
+                } else if (projectData.length > 0 && schedules.length > 0) {
+                    // 기존 스케줄이 있으면 절반만 등록되도록 조정
+                    const totalTasks = projectData.filter(t => t.할당시간 > 0).length;
+                    const scheduledTasks = new Set(schedules.map(s => s.taskId));
+                    const scheduledCount = scheduledTasks.size;
+                    
+                    // 등록된 테스크가 전체의 절반 이상이면 일부 제거
+                    if (scheduledCount > totalTasks * 0.6) {
+                        // 절반 정도만 남기도록 조정
+                        const targetCount = Math.floor(totalTasks * 0.5);
+                        const schedulesToKeep = schedules.slice(0, targetCount);
+                        schedules = schedulesToKeep;
+                        saveToLocalStorage();
+                    }
+                }
+                
+                // 데이터가 있으면 업로드 섹션에 안내 메시지 추가
+                if (projectData.length > 0) {
+                    const uploadSection = document.getElementById('uploadSection');
+                    const existingP = uploadSection.querySelector('p:last-of-type');
+                    if (existingP && !existingP.textContent.includes('이미 등록된 데이터')) {
+                        const infoP = document.createElement('p');
+                        infoP.style.cssText = 'color: #3b82f6; font-size: 0.9rem; margin-top: 15px; font-weight: 600;';
+                        infoP.textContent = `ℹ️ 이미 ${projectData.length}개의 테스크가 등록되어 있습니다. 새로 업로드하면 기존 데이터가 대체됩니다.`;
+                        uploadSection.appendChild(infoP);
+                    }
+                }
+            }
+            
+            // 항상 업로드 섹션만 표시
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'none';
+        };
+    </script>
+</body>
+</html>
+
+안
