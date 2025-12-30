@@ -124,8 +124,10 @@
         .main-layout {
             display: grid;
             grid-template-columns: 2fr 1fr;
+            grid-template-rows: 1fr;
             gap: 20px;
             margin-top: 20px;
+            align-items: start;
         }
 
         /* 왼쪽: 블록 영역 */
@@ -136,6 +138,8 @@
             padding: 25px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             min-height: 600px;
+            display: flex;
+            flex-direction: column;
         }
 
         .blocks-section h2 {
@@ -214,6 +218,23 @@
         .task-block:hover {
             transform: scale(1.1);
             z-index: 10;
+        }
+        
+        /* 하이라이트 스타일 */
+        .task-block.highlighted {
+            outline: 3px solid var(--primary-blue);
+            outline-offset: 2px;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
+            z-index: 15;
+            transform: scale(1.15);
+        }
+        
+        .member-task-item.highlighted {
+            background: #eff6ff !important;
+            border: 2px solid var(--primary-blue) !important;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+            transform: scale(1.02);
+            transition: all 0.2s ease;
         }
 
         .task-block.planning {
@@ -299,8 +320,23 @@
             border: 1px solid var(--border-color);
             padding: 25px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+        
+        .team-list-section > h2 {
+            flex-shrink: 0;
+        }
+        
+        .team-list-section .filter-buttons {
+            flex-shrink: 0;
+        }
+        
+        .team-list-section #teamListContainer {
+            flex: 1;
             overflow-y: auto;
+            min-height: 0;
         }
 
         .team-list-section h2 {
@@ -384,6 +420,40 @@
             border-radius: 6px;
             border: 1px solid var(--border-color);
             font-size: 0.85rem;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .list-item-tooltip {
+            position: fixed;
+            background: #1e293b;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: normal;
+            min-width: 200px;
+            max-width: 300px;
+            opacity: 0;
+            pointer-events: none;
+            transition: none;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            line-height: 1.6;
+            display: none;
+        }
+        
+        .list-item-tooltip.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .list-item-tooltip div {
+            margin-bottom: 4px;
+        }
+        
+        .list-item-tooltip div:last-child {
+            margin-bottom: 0;
         }
 
         .member-task-item-header {
@@ -590,6 +660,86 @@
         let currentFilter = 'member'; // 'member' or 'task'
         let selectedProject = null; // URL 파라미터로 전달된 프로젝트 이름
 
+        // 여러 날짜 일정을 포맷팅하는 함수 (my_calendar.html의 formatScheduleDisplay 참고)
+        function formatMultiDaySchedule(taskId, userName) {
+            // 해당 테스크와 사용자의 모든 스케줄 찾기
+            const relatedSchedules = schedules.filter(schedule => 
+                schedule.taskId === taskId && schedule.user === userName
+            );
+            
+            if (relatedSchedules.length === 0) {
+                return '';
+            }
+            
+            // 날짜별로 그룹화
+            const dateGroups = {};
+            relatedSchedules.forEach(schedule => {
+                const startDateStr = schedule.startDate;
+                const endDateStr = schedule.endDate;
+                
+                if (startDateStr === endDateStr) {
+                    // 같은 날짜
+                    if (!dateGroups[startDateStr]) {
+                        dateGroups[startDateStr] = [];
+                    }
+                    dateGroups[startDateStr].push({
+                        startTime: schedule.startTime,
+                        endTime: schedule.endTime
+                    });
+                } else {
+                    // 여러 날에 걸친 할당
+                    // 시작일
+                    if (!dateGroups[startDateStr]) {
+                        dateGroups[startDateStr] = [];
+                    }
+                    dateGroups[startDateStr].push({
+                        startTime: schedule.startTime,
+                        endTime: '23:59'
+                    });
+                    
+                    // 종료일
+                    if (!dateGroups[endDateStr]) {
+                        dateGroups[endDateStr] = [];
+                    }
+                    dateGroups[endDateStr].push({
+                        startTime: '00:00',
+                        endTime: schedule.endTime
+                    });
+                }
+            });
+            
+            // 날짜순으로 정렬하여 표시
+            const sortedDates = Object.keys(dateGroups).sort();
+            const scheduleLines = sortedDates.map(dateStr => {
+                const timeSlots = dateGroups[dateStr];
+                // 중복 제거 및 정렬
+                const uniqueTimeSlots = [];
+                timeSlots.forEach(slot => {
+                    const exists = uniqueTimeSlots.some(existing => 
+                        existing.startTime === slot.startTime && existing.endTime === slot.endTime
+                    );
+                    if (!exists) {
+                        uniqueTimeSlots.push(slot);
+                    }
+                });
+                
+                // 시간대 정렬
+                uniqueTimeSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                
+                const timeDisplay = uniqueTimeSlots.map(slot => {
+                    const hours = calculateHours(slot.startTime, slot.endTime);
+                    if (slot.startTime === '00:00' && slot.endTime === '23:59') {
+                        return `종일 (${hours}시간)`;
+                    }
+                    return `${slot.startTime} ~ ${slot.endTime} (${hours}시간)`;
+                }).join(', ');
+                
+                return `${dateStr} ${timeDisplay}`;
+            });
+            
+            return scheduleLines.join('<br>');
+        }
+        
         // 카테고리 매핑 (대분류 -> 소분류)
         function getCategoryFromMajor(majorCategory) {
             if (majorCategory.includes('기획') || majorCategory.includes('행사') || majorCategory.includes('경영')) {
@@ -904,7 +1054,8 @@
                                     originalIndex: originalAssignedIndex++,
                                     newIndex: newBlockIndex++,
                                     type: 'scheduled',
-                                    assignment: assignment
+                                    assignment: assignment,
+                                    task: task // task 정보 추가
                                 });
                             }
                         } else {
@@ -942,6 +1093,39 @@
                         const isScheduled = blockData.type === 'scheduled-active';
                         const isAssigned = blockData.type !== 'unassigned';
                         
+                        // task 정보 찾기 (연동을 위해)
+                        let taskId = null;
+                        let userName = null;
+                        if (blockScheduleInfo) {
+                            userName = blockScheduleInfo.userName;
+                            const task = projectData.find(t => 
+                                t.이름 === userName &&
+                                t.대분류 === taskGroup.대분류 &&
+                                t.중분류 === taskGroup.중분류 &&
+                                t.소분류 === taskGroup.소분류
+                            );
+                            if (task) taskId = task.id;
+                        } else if (blockGroup) {
+                            userName = blockGroup.userName;
+                            const task = projectData.find(t => 
+                                t.이름 === userName &&
+                                t.대분류 === taskGroup.대분류 &&
+                                t.중분류 === taskGroup.중분류 &&
+                                t.소분류 === taskGroup.소분류
+                            );
+                            if (task) taskId = task.id;
+                        } else if (blockData.assignment) {
+                            userName = blockData.assignment.이름;
+                            // blockData에 task가 있으면 사용, 없으면 찾기
+                            const task = blockData.task || projectData.find(t => 
+                                t.이름 === userName &&
+                                t.대분류 === taskGroup.대분류 &&
+                                t.중분류 === taskGroup.중분류 &&
+                                t.소분류 === taskGroup.소분류
+                            );
+                            if (task) taskId = task.id;
+                        }
+                        
                         const block = document.createElement('div');
                         if (isScheduled) {
                             block.className = `task-block ${category} scheduled-active`;
@@ -955,6 +1139,12 @@
                         }
                         block.setAttribute('data-block-index', originalIndex);
                         block.setAttribute('data-display-index', newIndex);
+                        // 연동을 위한 식별자 추가
+                        if (taskId && userName) {
+                            block.setAttribute('data-task-id', taskId);
+                            block.setAttribute('data-user-name', userName);
+                            block.setAttribute('data-task-key', `${taskId}-${userName}`);
+                        }
                         
                         const tooltip = document.createElement('div');
                         tooltip.className = 'task-block-tooltip';
@@ -1047,6 +1237,15 @@
                                     groupBlock.style.transition = 'transform 0.2s ease';
                                 });
                             }
+                            
+                            // 오른쪽 리스트 항목 하이라이트
+                            const taskKey = this.getAttribute('data-task-key');
+                            if (taskKey) {
+                                const listItems = document.querySelectorAll(`.member-task-item[data-task-key="${taskKey}"]`);
+                                listItems.forEach(item => {
+                                    item.classList.add('highlighted');
+                                });
+                            }
                         });
                         
                         block.addEventListener('mouseleave', function() {
@@ -1063,6 +1262,15 @@
                                     groupBlock.style.zIndex = '';
                                 });
                             }
+                            
+                            // 오른쪽 리스트 항목 하이라이트 제거
+                            const taskKey = this.getAttribute('data-task-key');
+                            if (taskKey) {
+                                const listItems = document.querySelectorAll(`.member-task-item[data-task-key="${taskKey}"]`);
+                                listItems.forEach(item => {
+                                    item.classList.remove('highlighted');
+                                });
+                            }
                         });
                         
                         blocksGrid.appendChild(block);
@@ -1071,6 +1279,22 @@
                     container.appendChild(groupDiv);
                 });
             });
+            
+            // 오른쪽 리스트 높이를 왼쪽 블록 영역과 동일하게 맞추기
+            syncListHeight();
+        }
+        
+        // 왼쪽 블록 영역과 오른쪽 리스트 영역의 높이 동기화
+        function syncListHeight() {
+            const blocksSection = document.querySelector('.blocks-section');
+            const teamListSection = document.querySelector('.team-list-section');
+            
+            if (blocksSection && teamListSection) {
+                // 왼쪽 블록 영역의 실제 높이 측정
+                const blocksHeight = blocksSection.offsetHeight;
+                // 오른쪽 리스트 영역의 높이를 동일하게 설정
+                teamListSection.style.height = `${blocksHeight}px`;
+            }
         }
 
         function changeFilter(filterType) {
@@ -1140,8 +1364,9 @@
                         ? '<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">✓ 등록됨</span>'
                         : '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">⏰ 미등록</span>';
                     
+                    const taskKey = `${task.id}-${task.이름}`;
                     taskListHTML += `
-                        <div class="member-task-item" ${scheduledClass}>
+                        <div class="member-task-item" ${scheduledClass} data-task-id="${task.id}" data-user-name="${task.이름}" data-task-key="${taskKey}">
                             <div class="member-task-item-header">
                                 <div>
                                     <div class="member-task-title">${task.중분류}</div>
@@ -1178,6 +1403,232 @@
                 `;
                 
                 container.appendChild(cardDiv);
+                
+                // 리스트 항목에 호버 이벤트 추가 (왼쪽 블록 하이라이트 및 오른쪽 툴팁 표시)
+                cardDiv.querySelectorAll('.member-task-item').forEach(item => {
+                    const taskKey = item.getAttribute('data-task-key');
+                    const taskId = item.getAttribute('data-task-id');
+                    const userName = item.getAttribute('data-user-name');
+                    if (!taskKey) return;
+                    
+                    // 오른쪽 툴팁 생성 (body에 직접 추가하여 잘림 방지)
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'list-item-tooltip';
+                    document.body.appendChild(tooltip);
+                    
+                    // 툴팁 내용 생성
+                    const relatedSchedules = schedules.filter(s => 
+                        s && s.taskId === taskId && (s.userName === userName || s.user === userName)
+                    );
+                    
+                    if (relatedSchedules.length > 0) {
+                        const scheduleDisplay = formatMultiDaySchedule(taskId, userName);
+                        const task = projectData.find(t => t.id === taskId);
+                        const totalHours = relatedSchedules.reduce((sum, s) => sum + (s.assignedHours || 0), 0);
+                        
+                        // 날짜와 시간 정보 생성 (등록된 일정의 날짜와 시간)
+                        let dateTimeInfo = '';
+                        if (relatedSchedules.length > 0) {
+                            // 모든 일정의 날짜와 시간을 수집
+                            const dateTimeList = relatedSchedules.map(s => {
+                                const dateStr = s.startDate === s.endDate 
+                                    ? s.startDate 
+                                    : `${s.startDate} ~ ${s.endDate}`;
+                                const hours = s.assignedHours || calculateHours(s.startTime, s.endTime, s.startDate, s.endDate);
+                                return `${dateStr} ${s.startTime} ~ ${s.endTime} (${hours}시간)`;
+                            });
+                            dateTimeInfo = dateTimeList.join('<br>');
+                        }
+                        
+                        tooltip.innerHTML = `
+                            <div style="font-weight: 600; margin-bottom: 6px;">📅 일정 정보</div>
+                            <div style="margin-bottom: 4px;">${scheduleDisplay}</div>
+                            ${dateTimeInfo ? `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3); margin-bottom: 6px;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">📆 등록 일시</div>
+                                <div style="font-size: 0.7rem; line-height: 1.6;">${dateTimeInfo}</div>
+                            </div>` : ''}
+                            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
+                                <div>📊 기준시간: ${task ? task.기준시간 : 0}시간</div>
+                                <div>✅ 등록시간: ${totalHours}시간</div>
+                            </div>
+                        `;
+                    }
+                    
+                    let hideTooltipTimeout = null;
+                    
+                    const showTooltip = () => {
+                        if (hideTooltipTimeout) {
+                            clearTimeout(hideTooltipTimeout);
+                            hideTooltipTimeout = null;
+                        }
+                        
+                        // 왼쪽 블록 하이라이트
+                        const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                        blocks.forEach(block => {
+                            block.classList.add('highlighted');
+                            
+                            const groupId = block.getAttribute('data-group-id');
+                            if (groupId) {
+                                const blocksGrid = block.closest('.task-blocks-grid');
+                                if (blocksGrid) {
+                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                    groupBlocks.forEach(function(groupBlock) {
+                                        groupBlock.style.transform = 'scale(1.15)';
+                                        groupBlock.style.zIndex = '20';
+                                        groupBlock.style.transition = 'transform 0.2s ease';
+                                    });
+                                }
+                            }
+                        });
+                        
+                        // 오른쪽 툴팁 표시 (리스트 항목 바로 위에 표시)
+                        if (tooltip && relatedSchedules.length > 0) {
+                            const rect = item.getBoundingClientRect();
+                            
+                            // 툴팁을 먼저 표시하여 크기 측정 (visibility: hidden으로 레이아웃에 영향 없이)
+                            tooltip.style.visibility = 'hidden';
+                            tooltip.style.display = 'block';
+                            tooltip.style.opacity = '0';
+                            tooltip.style.pointerEvents = 'none';
+                            
+                            // 강제 리플로우를 트리거하여 크기 측정
+                            void tooltip.offsetHeight;
+                            
+                            const tooltipRect = tooltip.getBoundingClientRect();
+                            
+                            // 리스트 항목 바로 위에 표시 (리스트 항목의 가로 중앙)
+                            const left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                            const top = rect.top - tooltipRect.height - 10; // 리스트 항목 위 10px
+                            
+                            // 화면 경계 체크
+                            const finalLeft = Math.max(20, Math.min(left, window.innerWidth - tooltipRect.width - 20));
+                            const finalTop = Math.max(20, top); // 화면 상단을 벗어나지 않도록
+                            
+                            tooltip.style.left = `${finalLeft}px`;
+                            tooltip.style.top = `${finalTop}px`;
+                            
+                            // 즉시 표시 (transition 없이)
+                            tooltip.style.visibility = 'visible';
+                            tooltip.style.opacity = '1';
+                            tooltip.style.pointerEvents = 'auto';
+                            tooltip.classList.add('show');
+                        }
+                    };
+                    
+                    const hideTooltip = () => {
+                        if (hideTooltipTimeout) {
+                            clearTimeout(hideTooltipTimeout);
+                        }
+                        
+                        hideTooltipTimeout = setTimeout(() => {
+                            // 왼쪽 블록 하이라이트 제거
+                            const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                            blocks.forEach(block => {
+                                block.classList.remove('highlighted');
+                                
+                                const groupId = block.getAttribute('data-group-id');
+                                if (groupId) {
+                                    const blocksGrid = block.closest('.task-blocks-grid');
+                                    if (blocksGrid) {
+                                        const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                        groupBlocks.forEach(function(groupBlock) {
+                                            groupBlock.style.transform = '';
+                                            groupBlock.style.zIndex = '';
+                                        });
+                                    }
+                                }
+                            });
+                            
+                            // 오른쪽 툴팁 숨김
+                            if (tooltip) {
+                                tooltip.classList.remove('show');
+                                tooltip.style.opacity = '0';
+                                tooltip.style.display = 'none';
+                                tooltip.style.pointerEvents = 'none';
+                                tooltip.style.visibility = 'hidden';
+                            }
+                            
+                            hideTooltipTimeout = null;
+                        }, 100);
+                    };
+                    
+                    item.addEventListener('mouseenter', showTooltip);
+                    item.addEventListener('mouseleave', () => {
+                        // 즉시 툴팁 숨김 (지연 없이)
+                        if (hideTooltipTimeout) {
+                            clearTimeout(hideTooltipTimeout);
+                            hideTooltipTimeout = null;
+                        }
+                        
+                        // 왼쪽 블록 하이라이트 제거
+                        const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                        blocks.forEach(block => {
+                            block.classList.remove('highlighted');
+                            
+                            const groupId = block.getAttribute('data-group-id');
+                            if (groupId) {
+                                const blocksGrid = block.closest('.task-blocks-grid');
+                                if (blocksGrid) {
+                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                    groupBlocks.forEach(function(groupBlock) {
+                                        groupBlock.style.transform = '';
+                                        groupBlock.style.zIndex = '';
+                                    });
+                                }
+                            }
+                        });
+                        
+                        // 툴팁 즉시 숨김
+                        if (tooltip) {
+                            tooltip.classList.remove('show');
+                            tooltip.style.opacity = '0';
+                            tooltip.style.display = 'none';
+                            tooltip.style.pointerEvents = 'none';
+                            tooltip.style.visibility = 'hidden';
+                        }
+                    });
+                    
+                    // 툴팁에도 마우스 이벤트 추가 (툴팁 위에 마우스가 있을 때는 유지)
+                    if (tooltip && relatedSchedules.length > 0) {
+                        tooltip.addEventListener('mouseenter', (e) => {
+                            e.stopPropagation();
+                            if (hideTooltipTimeout) {
+                                clearTimeout(hideTooltipTimeout);
+                                hideTooltipTimeout = null;
+                            }
+                        });
+                        
+                        tooltip.addEventListener('mouseleave', (e) => {
+                            e.stopPropagation();
+                            // 즉시 숨김
+                            if (tooltip) {
+                                tooltip.classList.remove('show');
+                                tooltip.style.opacity = '0';
+                                tooltip.style.display = 'none';
+                                tooltip.style.pointerEvents = 'none';
+                                tooltip.style.visibility = 'hidden';
+                            }
+                            
+                            // 왼쪽 블록 하이라이트 제거
+                            const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                            blocks.forEach(block => {
+                                block.classList.remove('highlighted');
+                                
+                                const groupId = block.getAttribute('data-group-id');
+                                if (groupId) {
+                                    const blocksGrid = block.closest('.task-blocks-grid');
+                                    if (blocksGrid) {
+                                        const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                        groupBlocks.forEach(function(groupBlock) {
+                                            groupBlock.style.transform = '';
+                                            groupBlock.style.zIndex = '';
+                                        });
+                                    }
+                                }
+                            });
+                        });
+                    }
+                });
             });
         }
 
@@ -1227,8 +1678,9 @@
                         ? '<span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 8px;">✓ 등록됨</span>'
                         : '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 8px;">⏰ 미등록</span>';
                     
+                    const taskKey = task ? `${task.id}-${assignment.이름}` : null;
                     memberListHTML += `
-                        <div class="member-task-item" ${scheduledClass}>
+                        <div class="member-task-item" ${scheduledClass} ${task ? `data-task-id="${task.id}" data-user-name="${assignment.이름}" data-task-key="${taskKey}"` : ''}>
                             <div class="member-task-item-header">
                                 <div>
                                     <div class="member-task-title">${assignment.이름}${scheduledBadge}</div>
@@ -1263,6 +1715,232 @@
                 `;
                 
                 container.appendChild(cardDiv);
+                
+                // 리스트 항목에 호버 이벤트 추가 (왼쪽 블록 하이라이트 및 오른쪽 툴팁 표시)
+                cardDiv.querySelectorAll('.member-task-item').forEach(item => {
+                    const taskKey = item.getAttribute('data-task-key');
+                    const taskId = item.getAttribute('data-task-id');
+                    const userName = item.getAttribute('data-user-name');
+                    if (!taskKey) return;
+                    
+                    // 오른쪽 툴팁 생성 (body에 직접 추가하여 잘림 방지)
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'list-item-tooltip';
+                    document.body.appendChild(tooltip);
+                    
+                    // 툴팁 내용 생성
+                    const relatedSchedules = schedules.filter(s => 
+                        s && s.taskId === taskId && (s.userName === userName || s.user === userName)
+                    );
+                    
+                    if (relatedSchedules.length > 0) {
+                        const scheduleDisplay = formatMultiDaySchedule(taskId, userName);
+                        const task = projectData.find(t => t.id === taskId);
+                        const totalHours = relatedSchedules.reduce((sum, s) => sum + (s.assignedHours || 0), 0);
+                        
+                        // 날짜와 시간 정보 생성 (등록된 일정의 날짜와 시간)
+                        let dateTimeInfo = '';
+                        if (relatedSchedules.length > 0) {
+                            // 모든 일정의 날짜와 시간을 수집
+                            const dateTimeList = relatedSchedules.map(s => {
+                                const dateStr = s.startDate === s.endDate 
+                                    ? s.startDate 
+                                    : `${s.startDate} ~ ${s.endDate}`;
+                                const hours = s.assignedHours || calculateHours(s.startTime, s.endTime, s.startDate, s.endDate);
+                                return `${dateStr} ${s.startTime} ~ ${s.endTime} (${hours}시간)`;
+                            });
+                            dateTimeInfo = dateTimeList.join('<br>');
+                        }
+                        
+                        tooltip.innerHTML = `
+                            <div style="font-weight: 600; margin-bottom: 6px;">📅 일정 정보</div>
+                            <div style="margin-bottom: 4px;">${scheduleDisplay}</div>
+                            ${dateTimeInfo ? `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3); margin-bottom: 6px;">
+                                <div style="font-weight: 600; margin-bottom: 4px;">📆 등록 일시</div>
+                                <div style="font-size: 0.7rem; line-height: 1.6;">${dateTimeInfo}</div>
+                            </div>` : ''}
+                            <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
+                                <div>📊 기준시간: ${task ? task.기준시간 : 0}시간</div>
+                                <div>✅ 등록시간: ${totalHours}시간</div>
+                            </div>
+                        `;
+                    }
+                    
+                    let hideTooltipTimeout = null;
+                    
+                    const showTooltip = () => {
+                        if (hideTooltipTimeout) {
+                            clearTimeout(hideTooltipTimeout);
+                            hideTooltipTimeout = null;
+                        }
+                        
+                        // 왼쪽 블록 하이라이트
+                        const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                        blocks.forEach(block => {
+                            block.classList.add('highlighted');
+                            
+                            const groupId = block.getAttribute('data-group-id');
+                            if (groupId) {
+                                const blocksGrid = block.closest('.task-blocks-grid');
+                                if (blocksGrid) {
+                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                    groupBlocks.forEach(function(groupBlock) {
+                                        groupBlock.style.transform = 'scale(1.15)';
+                                        groupBlock.style.zIndex = '20';
+                                        groupBlock.style.transition = 'transform 0.2s ease';
+                                    });
+                                }
+                            }
+                        });
+                        
+                        // 오른쪽 툴팁 표시 (리스트 항목 바로 위에 표시)
+                        if (tooltip && relatedSchedules.length > 0) {
+                            const rect = item.getBoundingClientRect();
+                            
+                            // 툴팁을 먼저 표시하여 크기 측정 (visibility: hidden으로 레이아웃에 영향 없이)
+                            tooltip.style.visibility = 'hidden';
+                            tooltip.style.display = 'block';
+                            tooltip.style.opacity = '0';
+                            tooltip.style.pointerEvents = 'none';
+                            
+                            // 강제 리플로우를 트리거하여 크기 측정
+                            void tooltip.offsetHeight;
+                            
+                            const tooltipRect = tooltip.getBoundingClientRect();
+                            
+                            // 리스트 항목 바로 위에 표시 (리스트 항목의 가로 중앙)
+                            const left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                            const top = rect.top - tooltipRect.height - 10; // 리스트 항목 위 10px
+                            
+                            // 화면 경계 체크
+                            const finalLeft = Math.max(20, Math.min(left, window.innerWidth - tooltipRect.width - 20));
+                            const finalTop = Math.max(20, top); // 화면 상단을 벗어나지 않도록
+                            
+                            tooltip.style.left = `${finalLeft}px`;
+                            tooltip.style.top = `${finalTop}px`;
+                            
+                            // 즉시 표시 (transition 없이)
+                            tooltip.style.visibility = 'visible';
+                            tooltip.style.opacity = '1';
+                            tooltip.style.pointerEvents = 'auto';
+                            tooltip.classList.add('show');
+                        }
+                    };
+                    
+                    const hideTooltip = () => {
+                        if (hideTooltipTimeout) {
+                            clearTimeout(hideTooltipTimeout);
+                        }
+                        
+                        hideTooltipTimeout = setTimeout(() => {
+                            // 왼쪽 블록 하이라이트 제거
+                            const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                            blocks.forEach(block => {
+                                block.classList.remove('highlighted');
+                                
+                                const groupId = block.getAttribute('data-group-id');
+                                if (groupId) {
+                                    const blocksGrid = block.closest('.task-blocks-grid');
+                                    if (blocksGrid) {
+                                        const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                        groupBlocks.forEach(function(groupBlock) {
+                                            groupBlock.style.transform = '';
+                                            groupBlock.style.zIndex = '';
+                                        });
+                                    }
+                                }
+                            });
+                            
+                            // 오른쪽 툴팁 숨김
+                            if (tooltip) {
+                                tooltip.classList.remove('show');
+                                tooltip.style.opacity = '0';
+                                tooltip.style.display = 'none';
+                                tooltip.style.pointerEvents = 'none';
+                                tooltip.style.visibility = 'hidden';
+                            }
+                            
+                            hideTooltipTimeout = null;
+                        }, 100);
+                    };
+                    
+                    item.addEventListener('mouseenter', showTooltip);
+                    item.addEventListener('mouseleave', () => {
+                        // 즉시 툴팁 숨김 (지연 없이)
+                        if (hideTooltipTimeout) {
+                            clearTimeout(hideTooltipTimeout);
+                            hideTooltipTimeout = null;
+                        }
+                        
+                        // 왼쪽 블록 하이라이트 제거
+                        const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                        blocks.forEach(block => {
+                            block.classList.remove('highlighted');
+                            
+                            const groupId = block.getAttribute('data-group-id');
+                            if (groupId) {
+                                const blocksGrid = block.closest('.task-blocks-grid');
+                                if (blocksGrid) {
+                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                    groupBlocks.forEach(function(groupBlock) {
+                                        groupBlock.style.transform = '';
+                                        groupBlock.style.zIndex = '';
+                                    });
+                                }
+                            }
+                        });
+                        
+                        // 툴팁 즉시 숨김
+                        if (tooltip) {
+                            tooltip.classList.remove('show');
+                            tooltip.style.opacity = '0';
+                            tooltip.style.display = 'none';
+                            tooltip.style.pointerEvents = 'none';
+                            tooltip.style.visibility = 'hidden';
+                        }
+                    });
+                    
+                    // 툴팁에도 마우스 이벤트 추가 (툴팁 위에 마우스가 있을 때는 유지)
+                    if (tooltip && relatedSchedules.length > 0) {
+                        tooltip.addEventListener('mouseenter', (e) => {
+                            e.stopPropagation();
+                            if (hideTooltipTimeout) {
+                                clearTimeout(hideTooltipTimeout);
+                                hideTooltipTimeout = null;
+                            }
+                        });
+                        
+                        tooltip.addEventListener('mouseleave', (e) => {
+                            e.stopPropagation();
+                            // 즉시 숨김
+                            if (tooltip) {
+                                tooltip.classList.remove('show');
+                                tooltip.style.opacity = '0';
+                                tooltip.style.display = 'none';
+                                tooltip.style.pointerEvents = 'none';
+                                tooltip.style.visibility = 'hidden';
+                            }
+                            
+                            // 왼쪽 블록 하이라이트 제거
+                            const blocks = document.querySelectorAll(`.task-block[data-task-key="${taskKey}"]`);
+                            blocks.forEach(block => {
+                                block.classList.remove('highlighted');
+                                
+                                const groupId = block.getAttribute('data-group-id');
+                                if (groupId) {
+                                    const blocksGrid = block.closest('.task-blocks-grid');
+                                    if (blocksGrid) {
+                                        const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                        groupBlocks.forEach(function(groupBlock) {
+                                            groupBlock.style.transform = '';
+                                            groupBlock.style.zIndex = '';
+                                        });
+                                    }
+                                }
+                            });
+                        });
+                    }
+                });
             });
         }
 
@@ -1359,6 +2037,11 @@
                     // 블록 및 리스트 렌더링
                     renderTaskBlocks();
                     renderTeamList();
+                    
+                    // 높이 동기화 (렌더링 완료 후)
+                    setTimeout(() => {
+                        syncListHeight();
+                    }, 100);
                 } else {
                     alert('등록된 프로젝트 데이터가 없습니다.');
                     window.location.href = 'project_manage.html';
@@ -1406,6 +2089,11 @@
                     projectData = filterProjectData(allProjectData, selectedProject);
                     renderTaskBlocks();
                     renderTeamList();
+                    
+                    // 높이 동기화 (렌더링 완료 후)
+                    setTimeout(() => {
+                        syncListHeight();
+                    }, 100);
                 }
             }
         };
