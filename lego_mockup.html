@@ -477,7 +477,6 @@
         <div class="nav-left">
             <h1 onclick="location.href='my_calendar.html'">🧱 Lego</h1>
             <div class="nav-menu" id="navMenu">
-                <button class="nav-menu-btn" onclick="location.href='my_calendar.html'">내 캘린더</button>
                 <!-- 역할별 메뉴는 JS에서 동적으로 추가 -->
             </div>
         </div>
@@ -595,31 +594,49 @@
         // 현재 페이지 감지
         const currentPage = window.location.pathname.split('/').pop() || 'lego_mockup.html';
         
-        // 역할별 메뉴 추가
-        const navMenu = document.getElementById('navMenu');
-        if (currentUser.role === 'admin') {
-            navMenu.innerHTML += `
-                <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
-                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
-                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
-                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
-                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
-            `;
-        } else if (currentUser.role === 'teamlead') {
-            navMenu.innerHTML += `
-                <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
-                <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
-                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
-                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
-                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
-            `;
-        } else {
-            navMenu.innerHTML += `
-                <button class="nav-menu-btn active" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
-                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
-            `;
+        // 통일된 네비게이션 메뉴 렌더링
+        function renderNavigation() {
+            const navMenu = document.getElementById('navMenu');
+            let menuHTML = '';
+            
+            // 관리자: 관리자 대시보드, 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리
+            if (currentUser.role === 'admin') {
+                menuHTML = `
+                    <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
+                    <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                    <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                `;
+            }
+            // 팀장: 팀장 대시보드, 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리
+            else if (currentUser.role === 'teamlead') {
+                menuHTML = `
+                    <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                    <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                    <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                `;
+            }
+            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리 (팀장 대시보드 제외)
+            else {
+                menuHTML = `
+                    <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                    <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                `;
+            }
+            
+            navMenu.innerHTML = menuHTML;
         }
+        
+        // 네비게이션 렌더링
+        renderNavigation();
 
         // ============================================
         // 📊 데이터 관리 영역 (Data Management)

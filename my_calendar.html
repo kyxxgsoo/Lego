@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>내 캘린더 - Lego</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="users-data.js"></script>
+    <script src="projects-data.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
@@ -684,7 +686,7 @@
         <div class="nav-left">
             <h1>🧱 Lego</h1>
             <div class="nav-menu" id="navMenu">
-                <button class="nav-menu-btn active" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                <!-- 역할별 메뉴는 JS에서 동적으로 추가 -->
             </div>
         </div>
         <div class="nav-right">
@@ -839,31 +841,49 @@
         // 현재 페이지 감지
         const currentPage = window.location.pathname.split('/').pop() || 'my_calendar.html';
         
-        // 역할별 메뉴 추가
-        const navMenu = document.getElementById('navMenu');
-        if (currentUser.role === 'admin') {
-            navMenu.innerHTML += `
-                <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
-                <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
-                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
-                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
-                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
-            `;
-        } else if (currentUser.role === 'teamlead') {
-            navMenu.innerHTML += `
-                <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
-                <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
-                <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
-                <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
-                <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
-            `;
-        } else {
-            navMenu.innerHTML += `
-                <button class="nav-menu-btn" onclick="location.href='task_schedule.html'">테스크 관리</button>
-            `;
+        // 통일된 네비게이션 메뉴 렌더링
+        function renderNavigation() {
+            const navMenu = document.getElementById('navMenu');
+            let menuHTML = '';
+            
+            // 관리자: 관리자 대시보드, 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리
+            if (currentUser.role === 'admin') {
+                menuHTML = `
+                    <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
+                    <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                    <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                `;
+            }
+            // 팀장: 팀장 대시보드, 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리
+            else if (currentUser.role === 'teamlead') {
+                menuHTML = `
+                    <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
+                    <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                    <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                `;
+            }
+            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리 (팀장 대시보드 제외)
+            else {
+                menuHTML = `
+                    <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
+                    <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
+                    <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
+                `;
+            }
+            
+            navMenu.innerHTML = menuHTML;
         }
+        
+        // 네비게이션 렌더링
+        renderNavigation();
 
         function getRoleName(role) {
             const roleNames = {
@@ -879,54 +899,57 @@
             window.location.href = 'login.html';
         }
 
-        // JSON 파일에서 데이터 로드
+        // 데이터 로드 (users-data.js, projects-data.js에서)
         let USERS = {};
         let CATEGORIES = {};
         let PROJECTS = {};
         let TASKS = {};
         
-        async function loadMockData() {
+        function loadMockData() {
             try {
-                // users.json 로드
-                const usersResponse = await fetch('users.json');
-                if (usersResponse.ok) {
-                    const usersData = await usersResponse.json();
+                // USERS_DATA에서 로드
+                if (typeof USERS_DATA !== 'undefined' && USERS_DATA.users) {
                     USERS = {};
-                    usersData.users.forEach(user => {
+                    USERS_DATA.users.forEach(user => {
                         USERS[user.id] = { name: user.name, team: user.team };
                     });
-                    CATEGORIES = usersData.categories || {};
+                    CATEGORIES = USERS_DATA.categories || {};
                 }
                 
-                // projects.json 로드
-                const projectsResponse = await fetch('projects.json');
-                if (projectsResponse.ok) {
-                    const projectsData = await projectsResponse.json();
-                    PROJECTS = {};
-                    projectsData.projects.forEach(project => {
-                        PROJECTS[project.id] = {
-                            name: project.name,
-                            standardHours: 0,
-                            assignedHours: 0
-                        };
-                    });
+                // PROJECTS_DATA에서 로드
+                if (typeof PROJECTS_DATA !== 'undefined') {
+                    if (PROJECTS_DATA.projects) {
+                        PROJECTS = {};
+                        PROJECTS_DATA.projects.forEach(project => {
+                            PROJECTS[project.id] = {
+                                name: project.name,
+                                standardHours: 0,
+                                assignedHours: 0
+                            };
+                        });
+                    }
                     
                     // tasks를 객체로 변환
-                    TASKS = {};
-                    projectsData.tasks.forEach(task => {
-                        TASKS[task.id] = {
-                            taskId: task.id,
-                            title: task.소분류 || task.중분류,
-                            category: getCategoryFromMajor(task.대분류),
-                            standardHours: task.기준시간 || 0,
-                            projectId: task.projectId
-                        };
-                    });
+                    if (PROJECTS_DATA.tasks) {
+                        TASKS = {};
+                        PROJECTS_DATA.tasks.forEach(task => {
+                            TASKS[task.id] = {
+                                taskId: task.id,
+                                title: task.소분류 || task.중분류 || task.title,
+                                category: getCategoryFromMajor(task.대분류) || task.category || 'planning',
+                                standardHours: task.기준시간 || task.totalHours || 0,
+                                projectId: task.projectId
+                            };
+                        });
+                    }
                 }
             } catch (error) {
                 console.error('목업 데이터 로드 오류:', error);
             }
         }
+        
+        // 초기 데이터 로드
+        loadMockData();
         
         function getCategoryFromMajor(대분류) {
             if (!대분류) return 'planning';
@@ -944,37 +967,48 @@
         let TASK_ASSIGNMENTS = [];
         let filteredAssignments = [];
         
-        // JSON 파일에서 데이터 로드
-        async function loadFromJSON() {
-            try {
-                const response = await fetch('data.json');
-                if (!response.ok) {
-                    return null;
+        function getSchedulesForDate(dateStr) {
+            const schedules = [];
+            filteredAssignments.forEach(assignment => {
+                if (dateStr >= assignment.startDate && dateStr <= assignment.endDate) {
+                    // TASKS에서 찾거나, assignment에 이미 title이 있으면 사용
+                    const task = TASKS[assignment.taskId];
+                    schedules.push({
+                        ...assignment,
+                        title: task ? task.title : (assignment.title || '테스크'),
+                        category: task ? task.category : (assignment.category || 'planning'),
+                        projectId: task ? task.projectId : (assignment.projectId || 'project-unknown')
+                    });
                 }
-                const data = await response.json();
-                return data;
-            } catch (error) {
-                return null;
-            }
+            });
+            return schedules;
         }
-        
-        async function loadSchedulesFromLocalStorage() {
-            // 먼저 JSON 파일에서 로드 시도
-            let data = await loadFromJSON();
-            
-            // JSON 파일이 없으면 localStorage에서 로드
-            if (!data) {
-                const saved = localStorage.getItem('projectSchedules');
-                if (saved) {
-                    try {
-                        data = JSON.parse(saved);
-                    } catch (e) {
-                        console.error('데이터 로드 오류:', e);
-                        return;
-                    }
-                } else {
-                    return;
+
+        const SCHEDULE_DATA = new Proxy({}, {
+            get: function(target, dateStr) {
+                if (typeof dateStr !== 'string' || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    return target[dateStr];
                 }
+                if (!target[dateStr]) {
+                    target[dateStr] = getSchedulesForDate(dateStr);
+                }
+                return target[dateStr];
+            }
+        });
+        
+        function loadSchedulesFromLocalStorage() {
+            // localStorage에서 로드
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) {
+                return;
+            }
+            
+            let data;
+            try {
+                data = JSON.parse(saved);
+            } catch (e) {
+                console.error('데이터 로드 오류:', e);
+                return;
             }
             
             if (data) {
@@ -1062,45 +1096,16 @@
         loadSchedulesFromLocalStorage();
         
         // localStorage 변경 감지 (다른 탭에서 스케줄 등록 시)
-        window.addEventListener('storage', async function(e) {
+        window.addEventListener('storage', function(e) {
             if (e.key === 'projectSchedules') {
-                await loadSchedulesFromLocalStorage();
+                loadSchedulesFromLocalStorage();
             }
         });
         
-        // 주기적으로 체크 (같은 탭에서도 업데이트) - JSON 파일 우선
-        setInterval(async function() {
-            await loadSchedulesFromLocalStorage();
+        // 주기적으로 체크 (같은 탭에서도 업데이트)
+        setInterval(function() {
+            loadSchedulesFromLocalStorage();
         }, 3000);
-
-        function getSchedulesForDate(dateStr) {
-            const schedules = [];
-            filteredAssignments.forEach(assignment => {
-                if (dateStr >= assignment.startDate && dateStr <= assignment.endDate) {
-                    // TASKS에서 찾거나, assignment에 이미 title이 있으면 사용
-                    const task = TASKS[assignment.taskId];
-                    schedules.push({
-                        ...assignment,
-                        title: task ? task.title : (assignment.title || '테스크'),
-                        category: task ? task.category : (assignment.category || 'planning'),
-                        projectId: task ? task.projectId : (assignment.projectId || 'project-unknown')
-                    });
-                }
-            });
-            return schedules;
-        }
-
-        const SCHEDULE_DATA = new Proxy({}, {
-            get: function(target, dateStr) {
-                if (typeof dateStr !== 'string' || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    return target[dateStr];
-                }
-                if (!target[dateStr]) {
-                    target[dateStr] = getSchedulesForDate(dateStr);
-                }
-                return target[dateStr];
-            }
-        });
 
         // 필터 적용
         function applyFilters() {

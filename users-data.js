@@ -28,7 +28,7 @@ const USERS_DATA = {
       "name": "이경수",
       "password": "user123",
       "team": "dev",
-      "role": "teamlead",
+      "role": "user",
       "department": "백엔드",
       "affiliation": "개발팀",
       "userId": "user-kim",
