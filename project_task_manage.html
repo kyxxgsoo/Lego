@@ -855,16 +855,81 @@
                     groupDiv.appendChild(headerDiv);
                     groupDiv.appendChild(blocksGrid);
                     
-                    // 블록 생성
-                    for (let i = 0; i < totalBlocks; i++) {
-                        const isAssigned = i < assignedBlocks;
-                        const blockScheduleInfo = scheduledBlockInfo.find(info => 
-                            i >= info.startIndex && i <= info.endIndex
+                    // 블록 배열 생성 (상태별로 정렬하여 왼쪽부터 채우기)
+                    const blockArray = [];
+                    let newBlockIndex = 0;
+                    
+                    // 1. 등록된 블록들 (scheduled-active) - 왼쪽부터
+                    scheduledBlockInfo.forEach(info => {
+                        for (let originalIndex = info.startIndex; originalIndex <= info.endIndex; originalIndex++) {
+                            const blockGroup = blockGroups.find(group => 
+                                originalIndex >= group.startIndex && originalIndex <= group.endIndex
+                            );
+                            blockArray.push({
+                                originalIndex: originalIndex,
+                                newIndex: newBlockIndex++,
+                                type: 'scheduled-active',
+                                blockScheduleInfo: info,
+                                blockGroup: blockGroup
+                            });
+                        }
+                    });
+                    
+                    // 2. 할당되었지만 미등록 블록들 (scheduled) - 중간
+                    let originalAssignedIndex = 0;
+                    reorderedAssignments.forEach(assignment => {
+                        const task = projectData.find(t => 
+                            t.이름 === assignment.이름 &&
+                            t.대분류 === taskGroup.대분류 &&
+                            t.중분류 === taskGroup.중분류 &&
+                            t.소분류 === taskGroup.소분류
                         );
-                        const blockGroup = blockGroups.find(group => 
-                            i >= group.startIndex && i <= group.endIndex
-                        );
-                        const isScheduled = !!blockScheduleInfo;
+                        const isScheduled = task && isTaskScheduled(task.id, assignment.이름);
+                        
+                        if (!isScheduled) {
+                            // 미등록 할당 블록
+                            for (let j = 0; j < assignment.할당시간; j++) {
+                                blockArray.push({
+                                    originalIndex: originalAssignedIndex++,
+                                    newIndex: newBlockIndex++,
+                                    type: 'scheduled',
+                                    assignment: assignment
+                                });
+                            }
+                        } else {
+                            // 등록된 블록은 이미 추가되었으므로 원래 인덱스만 증가
+                            originalAssignedIndex += assignment.할당시간;
+                        }
+                    });
+                    
+                    // 3. 미할당 블록들 - 오른쪽
+                    for (let i = assignedBlocks; i < totalBlocks; i++) {
+                        blockArray.push({
+                            originalIndex: i,
+                            newIndex: newBlockIndex++,
+                            type: 'unassigned'
+                        });
+                    }
+                    
+                    // 블록 그룹의 첫 번째 블록 인덱스 저장
+                    const groupFirstIndexMap = {};
+                    blockArray.forEach((blockData) => {
+                        if (blockData.blockGroup) {
+                            const groupId = blockData.blockGroup.groupId;
+                            if (!groupFirstIndexMap[groupId]) {
+                                groupFirstIndexMap[groupId] = blockData.newIndex;
+                            }
+                        }
+                    });
+                    
+                    // 블록 생성 및 배치
+                    blockArray.forEach((blockData) => {
+                        const originalIndex = blockData.originalIndex;
+                        const newIndex = blockData.newIndex;
+                        const blockScheduleInfo = blockData.blockScheduleInfo;
+                        const blockGroup = blockData.blockGroup;
+                        const isScheduled = blockData.type === 'scheduled-active';
+                        const isAssigned = blockData.type !== 'unassigned';
                         
                         const block = document.createElement('div');
                         if (isScheduled) {
@@ -872,10 +937,13 @@
                             if (blockGroup) {
                                 block.setAttribute('data-group-id', blockGroup.groupId);
                             }
-                        } else {
+                        } else if (isAssigned) {
                             block.className = `task-block ${category} scheduled`;
+                        } else {
+                            block.className = `task-block ${category}`;
                         }
-                        block.setAttribute('data-block-index', i);
+                        block.setAttribute('data-block-index', originalIndex);
+                        block.setAttribute('data-display-index', newIndex);
                         
                         const tooltip = document.createElement('div');
                         tooltip.className = 'task-block-tooltip';
@@ -885,10 +953,18 @@
                                 ? blockGroup.startDate 
                                 : `${blockGroup.startDate} ~ ${blockGroup.endDate}`;
                             
-                            const blockRange = blockGroup.startIndex === blockGroup.endIndex 
-                                ? `${blockGroup.startIndex + 1}` 
-                                : `${blockGroup.startIndex + 1}~${blockGroup.endIndex + 1}`;
+                            // 같은 그룹의 첫 번째 블록 인덱스와 블록 개수로 범위 계산
+                            const groupFirstIndex = groupFirstIndexMap[blockGroup.groupId] || newIndex;
+                            const groupBlockCount = blockGroup.endIndex - blockGroup.startIndex + 1;
+                            const groupStartDisplay = groupFirstIndex + 1;
+                            const groupEndDisplay = groupFirstIndex + groupBlockCount;
+                            const blockRange = groupBlockCount === 1 
+                                ? `${groupStartDisplay}` 
+                                : `${groupStartDisplay}~${groupEndDisplay}`;
                             
+                            const assignedHoursHtml = blockGroup.assignedHours > 0 
+                                ? `<div>📋 할당시간: ${blockGroup.assignedHours}시간</div>` 
+                                : '';
                             tooltip.innerHTML = `
                                 <div style="font-weight: 600; margin-bottom: 4px;">등록됨 (블록 ${blockRange}/${totalBlocks})</div>
                                 <div>👤 ${blockGroup.userName}</div>
@@ -897,7 +973,7 @@
                                 <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
                                     <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
                                     <div>✅ 등록시간: ${blockGroup.actualHours}시간</div>
-                                    ${blockGroup.assignedHours > 0 ? `<div>📋 할당시간: ${blockGroup.assignedHours}시간</div>` : ''}
+                                    ${assignedHoursHtml}
                                 </div>
                             `;
                         } else if (isScheduled && !blockGroup && blockScheduleInfo) {
@@ -913,27 +989,30 @@
                             );
                             const assignedHours = blockScheduleInfo.assignedHours || 0;
                             
+                            const assignedHoursHtml2 = assignedHours > 0 
+                                ? `<div>📋 할당시간: ${assignedHours}시간</div>` 
+                                : '';
                             tooltip.innerHTML = `
-                                <div style="font-weight: 600; margin-bottom: 4px;">등록됨 (${i + 1}/${totalBlocks})</div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">등록됨 (${newIndex + 1}/${totalBlocks})</div>
                                 <div>👤 ${blockScheduleInfo.userName}</div>
                                 <div>📅 ${dateStr}</div>
                                 <div>⏰ ${blockScheduleInfo.startTime} ~ ${blockScheduleInfo.endTime}</div>
                                 <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
                                     <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
                                     <div>✅ 등록시간: ${actualHours}시간</div>
-                                    ${assignedHours > 0 ? `<div>📋 할당시간: ${assignedHours}시간</div>` : ''}
+                                    ${assignedHoursHtml2}
                                 </div>
                             `;
-                        } else if (isAssigned) {
+                        } else if (isAssigned && !isScheduled) {
                             tooltip.innerHTML = `
-                                <div style="font-weight: 600; margin-bottom: 4px;">할당됨 (미등록) (${i + 1}/${totalBlocks})</div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">할당됨 (미등록) (${newIndex + 1}/${totalBlocks})</div>
                                 <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
                                     <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
                                 </div>
                             `;
-                        } else {
+                        } else if (!isAssigned) {
                             tooltip.innerHTML = `
-                                <div style="font-weight: 600; margin-bottom: 4px;">미할당 (${i + 1}/${totalBlocks})</div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">미할당 (${newIndex + 1}/${totalBlocks})</div>
                                 <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
                                     <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
                                 </div>
@@ -948,16 +1027,14 @@
                                 currentTooltip.style.opacity = '1';
                             }
                             
-                            if (blockGroup) {
-                                const groupId = this.getAttribute('data-group-id');
-                                if (groupId) {
-                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
-                                    groupBlocks.forEach(groupBlock => {
-                                        groupBlock.style.transform = 'scale(1.15)';
-                                        groupBlock.style.zIndex = '20';
-                                        groupBlock.style.transition = 'transform 0.2s ease';
-                                    });
-                                }
+                            const groupId = this.getAttribute('data-group-id');
+                            if (groupId) {
+                                const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                groupBlocks.forEach(function(groupBlock) {
+                                    groupBlock.style.transform = 'scale(1.15)';
+                                    groupBlock.style.zIndex = '20';
+                                    groupBlock.style.transition = 'transform 0.2s ease';
+                                });
                             }
                         });
                         
@@ -967,20 +1044,18 @@
                                 currentTooltip.style.opacity = '0';
                             }
                             
-                            if (blockGroup) {
-                                const groupId = this.getAttribute('data-group-id');
-                                if (groupId) {
-                                    const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
-                                    groupBlocks.forEach(groupBlock => {
-                                        groupBlock.style.transform = '';
-                                        groupBlock.style.zIndex = '';
-                                    });
-                                }
+                            const groupId = this.getAttribute('data-group-id');
+                            if (groupId) {
+                                const groupBlocks = blocksGrid.querySelectorAll(`[data-group-id="${groupId}"]`);
+                                groupBlocks.forEach(function(groupBlock) {
+                                    groupBlock.style.transform = '';
+                                    groupBlock.style.zIndex = '';
+                                });
                             }
                         });
                         
                         blocksGrid.appendChild(block);
-                    }
+                    });
                     
                     container.appendChild(groupDiv);
                 });
@@ -1225,24 +1300,30 @@
             function loadData() {
                 let data = null;
                 
-                // projects-data.js에서 로드된 데이터 사용
-                if (typeof PROJECTS_DATA !== 'undefined') {
-                    data = {
-                        projects: PROJECTS_DATA.projects || [],
-                        tasks: PROJECTS_DATA.tasks || [],
-                        schedules: PROJECTS_DATA.schedules || []
-                    };
+                // localStorage에서 먼저 로드 (등록된 schedules 포함)
+                const saved = localStorage.getItem('projectSchedules');
+                if (saved) {
+                    try {
+                        data = JSON.parse(saved);
+                    } catch (e) {
+                        console.error('localStorage 데이터 파싱 오류:', e);
+                    }
                 }
                 
-                // localStorage에서도 로드 시도
-                if (!data) {
-                    const saved = localStorage.getItem('projectSchedules');
-                    if (saved) {
-                        try {
-                            data = JSON.parse(saved);
-                        } catch (e) {
-                            console.error('localStorage 데이터 파싱 오류:', e);
-                        }
+                // projects-data.js에서 로드된 데이터와 병합 (schedules는 localStorage 우선)
+                if (typeof PROJECTS_DATA !== 'undefined') {
+                    if (!data) {
+                        data = {
+                            projects: PROJECTS_DATA.projects || [],
+                            tasks: PROJECTS_DATA.tasks || [],
+                            schedules: PROJECTS_DATA.schedules || []
+                        };
+                    } else {
+                        // localStorage 데이터에 PROJECTS_DATA의 projects와 tasks 병합 (schedules는 localStorage 유지)
+                        data.projects = data.projects || PROJECTS_DATA.projects || [];
+                        data.tasks = data.tasks || PROJECTS_DATA.tasks || [];
+                        // schedules는 localStorage의 것을 유지 (등록된 일정이 있으므로)
+                        data.schedules = data.schedules || [];
                     }
                 }
                 
@@ -1276,24 +1357,30 @@
             function reloadData() {
                 let data = null;
                 
-                // projects-data.js에서 로드된 데이터 사용
-                if (typeof PROJECTS_DATA !== 'undefined') {
-                    data = {
-                        projects: PROJECTS_DATA.projects || [],
-                        tasks: PROJECTS_DATA.tasks || [],
-                        schedules: PROJECTS_DATA.schedules || []
-                    };
+                // localStorage에서 먼저 로드 (등록된 schedules 포함)
+                const saved = localStorage.getItem('projectSchedules');
+                if (saved) {
+                    try {
+                        data = JSON.parse(saved);
+                    } catch (e) {
+                        console.error('localStorage 데이터 파싱 오류:', e);
+                    }
                 }
                 
-                // localStorage에서도 로드 시도
-                if (!data) {
-                    const saved = localStorage.getItem('projectSchedules');
-                    if (saved) {
-                        try {
-                            data = JSON.parse(saved);
-                        } catch (e) {
-                            console.error('localStorage 데이터 파싱 오류:', e);
-                        }
+                // projects-data.js에서 로드된 데이터와 병합 (schedules는 localStorage 우선)
+                if (typeof PROJECTS_DATA !== 'undefined') {
+                    if (!data) {
+                        data = {
+                            projects: PROJECTS_DATA.projects || [],
+                            tasks: PROJECTS_DATA.tasks || [],
+                            schedules: PROJECTS_DATA.schedules || []
+                        };
+                    } else {
+                        // localStorage 데이터에 PROJECTS_DATA의 projects와 tasks 병합 (schedules는 localStorage 유지)
+                        data.projects = data.projects || PROJECTS_DATA.projects || [];
+                        data.tasks = data.tasks || PROJECTS_DATA.tasks || [];
+                        // schedules는 localStorage의 것을 유지 (등록된 일정이 있으므로)
+                        data.schedules = data.schedules || [];
                     }
                 }
                 
