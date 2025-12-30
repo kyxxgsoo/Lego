@@ -605,7 +605,7 @@
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -616,7 +616,7 @@
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -626,7 +626,7 @@
             else {
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -643,24 +643,30 @@
         function loadData() {
             let data = null;
             
-            // projects-data.js에서 로드된 데이터 사용
-            if (typeof PROJECTS_DATA !== 'undefined') {
-                data = {
-                    projects: PROJECTS_DATA.projects || [],
-                    tasks: PROJECTS_DATA.tasks || [],
-                    schedules: PROJECTS_DATA.schedules || []
-                };
+            // localStorage에서 먼저 로드 (등록된 schedules 포함)
+            const saved = localStorage.getItem('projectSchedules');
+            if (saved) {
+                try {
+                    data = JSON.parse(saved);
+                } catch (e) {
+                    console.error('데이터 로드 오류:', e);
+                }
             }
             
-            // localStorage에서도 로드 시도
-            if (!data) {
-                const saved = localStorage.getItem('projectSchedules');
-                if (saved) {
-                    try {
-                        data = JSON.parse(saved);
-                    } catch (e) {
-                        console.error('데이터 로드 오류:', e);
-                    }
+            // projects-data.js에서 로드된 데이터와 병합 (schedules는 localStorage 우선)
+            if (typeof PROJECTS_DATA !== 'undefined') {
+                if (!data) {
+                    data = {
+                        projects: PROJECTS_DATA.projects || [],
+                        tasks: PROJECTS_DATA.tasks || [],
+                        schedules: PROJECTS_DATA.schedules || []
+                    };
+                } else {
+                    // localStorage 데이터에 PROJECTS_DATA의 projects와 tasks 병합 (schedules는 localStorage 유지)
+                    data.projects = data.projects || PROJECTS_DATA.projects || [];
+                    data.tasks = data.tasks || PROJECTS_DATA.tasks || [];
+                    // schedules는 localStorage의 것을 유지 (등록된 일정이 있으므로)
+                    data.schedules = data.schedules || [];
                 }
             }
             

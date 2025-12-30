@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>프로젝트 계획 보기 - 인터랙티브 목업</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="users-data.js"></script>
+    <script src="projects-data.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
@@ -36,6 +38,8 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: relative;
+            z-index: 1; /* 툴팁보다 낮게 설정 */
         }
 
         .nav-left {
@@ -121,14 +125,15 @@
         .content-area {
             flex: 1; background: white; border-radius: 12px;
             border: 1px solid var(--border-color); display: flex;
-            flex-direction: column; overflow: hidden;
+            flex-direction: column; overflow: hidden; /* 스크롤은 calendar-grid에서 처리 */
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            position: relative; /* fixed 툴팁의 기준점 */
         }
 
         .toolbar {
             padding: 15px 20px; display: flex; justify-content: space-between;
             align-items: center; border-bottom: 1px solid var(--border-color);
-            position: relative; z-index: 100002;
+            position: relative; z-index: 1; /* 툴팁보다 낮게 설정 */
         }
 
         .view-switch { display: flex; background: #f1f5f9; padding: 4px; border-radius: 8px; }
@@ -138,21 +143,31 @@
         }
         .view-switch button.active { background: white; color: var(--text-dark); box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: 600; }
 
-        .legend-wrapper { position: relative; margin-left: 10px; z-index: 100001; }
+        .legend-wrapper { position: relative; margin-left: 10px; z-index: 9999999; }
         .legend-btn { background: #f1f5f9; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
         .legend-popup {
-            display: none; position: absolute; top: 40px; left: 0;
-            background: white; border: 1px solid var(--border-color);
-            border-radius: 10px; padding: 15px; width: 220px; z-index: 100000 !important;
+            display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px;
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
+            border: 1px solid var(--border-color);
+            border-radius: 10px; padding: 15px; width: 220px; z-index: 9999999 !important; /* 최상위 z-index - 모든 요소 위에 표시 */
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
+            isolation: isolate; /* 부모 opacity 상속 차단 */
         }
-        .legend-wrapper:hover .legend-popup { display: block; }
+        .legend-wrapper:hover .legend-popup { 
+            display: block !important;
+            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
+        }
         .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 0.85rem; }
         .dot { width: 12px; height: 12px; border-radius: 3px; }
 
         /* --- Calendar Grid --- */
         .calendar-grid {
             flex: 1; overflow: auto; display: none;
+            position: relative; /* 툴팁 위치 계산을 위한 기준점 */
         }
         
         /* 주별 뷰 */
@@ -229,26 +244,28 @@
         /* 월별 뷰 테스크 바 툴팁 */
         .month-task-tooltip {
             display: none;
-            position: absolute;
+            position: fixed; /* fixed로 변경하여 부모 overflow 영향 없이 표시 */
             left: 50%;
-            bottom: calc(100% + 8px); /* 테스크 바 바로 위 */
+            bottom: auto;
+            top: auto;
             transform: translateX(-50%);
-            background: white;
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 12px;
             min-width: 200px;
             max-width: 300px;
-            z-index: 99999 !important;
+            z-index: 9999999 !important; /* 최상위 z-index - 모든 요소 위에 표시 */
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             font-size: 0.8rem;
             line-height: 1.6;
             white-space: normal;
             pointer-events: none;
+            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
+            isolation: isolate; /* 부모 opacity 상속 차단 */
         }
-        .month-task-bar:hover .month-task-tooltip {
-            display: block;
-        }
+        /* 월별 뷰 툴팁은 JavaScript로만 제어 */
         .month-task-tooltip strong {
             display: block;
             margin-bottom: 8px;
@@ -278,20 +295,28 @@
         /* 사람별 업무 툴팁 */
         .task-tooltip {
             display: none;
-            position: absolute;
+            position: fixed; /* fixed로 변경하여 부모 overflow 영향 없이 표시 */
             left: 0;
             top: 20px;
-            background: white;
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 10px;
             min-width: 180px;
-            z-index: 200;
+            z-index: 9999999 !important; /* 최상위 z-index - 모든 요소 위에 표시 */
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
             font-size: 0.75rem;
             line-height: 1.5;
+            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
+            isolation: isolate; /* 부모 opacity 상속 차단 */
         }
-        .person:hover .task-tooltip { display: block; }
+        .person:hover .task-tooltip { 
+            display: block !important;
+            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
+        }
         .task-tooltip .tooltip-title {
             font-weight: 700;
             margin-bottom: 8px;
@@ -369,34 +394,42 @@
         .task-detail-tooltip.force-show {
             display: block !important;
             visibility: visible !important;
-            opacity: 1 !important;
-            z-index: 10000 !important;
+            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
+            z-index: 9999999 !important; /* 최상위 z-index */
+            isolation: isolate !important; /* 부모 opacity 상속 차단 */
         }
         
         /* 일정 블록 툴팁 */
         .task-detail-tooltip {
             display: none;
-            position: absolute;
+            position: fixed; /* fixed로 변경하여 부모 overflow 영향 없이 표시 */
             left: 50%;
-            bottom: 100%;
+            bottom: auto;
+            top: auto;
             transform: translateX(-50%);
             margin-bottom: 8px;
-            background: white;
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 12px;
             min-width: 200px;
             max-width: 300px;
-            z-index: 1000;
+            z-index: 9999999 !important; /* 최상위 z-index - 모든 요소 위에 표시 */
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             font-size: 0.8rem;
             line-height: 1.6;
             white-space: normal;
             pointer-events: none;
+            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
+            isolation: isolate; /* 부모 opacity 상속 차단 */
         }
         /* 툴팁은 JavaScript로만 제어 (CSS 호버 제거하여 깜빡임 방지) */
         .task .task-detail-tooltip.force-show { 
             display: block !important;
+            z-index: 9999999 !important; /* 최상위 z-index */
         }
         .task-detail-tooltip::after {
             content: '';
@@ -433,7 +466,27 @@
             background: #9ca3af !important;
             color: #ffffff !important;
             border-left-color: #6b7280 !important;
-            opacity: 0.7 !important;
+            opacity: 1 !important;
+        }
+        /* 툴팁은 부모의 opacity를 상속받지 않도록 */
+        .task.scheduled .task-detail-tooltip {
+            opacity: 1 !important;
+            isolation: isolate;
+        }
+        .month-task-bar.scheduled .month-task-tooltip {
+            opacity: 1 !important;
+            background: #ffffff !important; /* 명시적 흰색 배경 */
+            background-color: #ffffff !important; /* 배경색 명시적 설정 */
+            isolation: isolate;
+        }
+        /* 모든 툴팁은 부모의 opacity를 상속받지 않도록 */
+        .task .task-detail-tooltip,
+        .month-task-bar .month-task-tooltip,
+        .person .task-tooltip {
+            opacity: 1 !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            isolation: isolate;
         }
         
         .task.scheduled.blue,
@@ -462,8 +515,64 @@
             width: 300px; background: white; border-radius: 12px;
             border: 1px solid var(--border-color); padding: 25px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: width 0.3s ease;
+            position: relative;
+            z-index: 1; /* 툴팁보다 낮게 설정 */
         }
-        .sidebar h3 { font-size: 1.1rem; margin-top: 0; margin-bottom: 20px; }
+        .sidebar.collapsed {
+            width: 60px;
+            padding: 25px 10px;
+        }
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .sidebar.collapsed .sidebar-header {
+            justify-content: center;
+            margin-bottom: 0;
+        }
+        .sidebar h3 { 
+            font-size: 1.1rem; 
+            margin: 0; 
+            flex: 1;
+            transition: opacity 0.3s ease, width 0.3s ease;
+        }
+        .sidebar.collapsed h3 {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            margin: 0;
+        }
+        .sidebar-toggle {
+            background: #f1f5f9;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #475569;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            min-width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-toggle:hover {
+            background: #e2e8f0;
+        }
+        .sidebar-content {
+            transition: opacity 0.3s ease, max-height 0.3s ease;
+            overflow: hidden;
+        }
+        .sidebar.collapsed .sidebar-content {
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
         .team-group { margin-bottom: 25px; }
         .team-header { display: flex; align-items: center; gap: 10px; font-weight: 700; margin-bottom: 12px; color: var(--primary-blue); font-size: 0.95rem; }
         .member-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; margin-left: 15px; font-size: 0.9rem; color: #475569; }
@@ -510,10 +619,10 @@
                     </div>
                 </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:50000;">
-                    <button id="prev-btn" onclick="navigate(-1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;position:relative;z-index:50000;">◀</button>
+                <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1;">
+                    <button id="prev-btn" onclick="navigate(-1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;position:relative;z-index:1;">◀</button>
                     <div style="font-weight:600;min-width:200px;text-align:center;" id="current-date-display">2023년 3월</div>
-                    <button id="next-btn" onclick="navigate(1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;position:relative;z-index:50000;">▶</button>
+                    <button id="next-btn" onclick="navigate(1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;position:relative;z-index:1;">▶</button>
                 </div>
             </div>
 
@@ -533,32 +642,37 @@
             </div>
         </div>
 
-        <aside class="sidebar">
-            <h3>팀/사원 필터</h3>
-            
-            <div class="team-group">
-                <div class="team-header">
-                    <input type="checkbox" id="team-dev" checked onchange="handleTeamAllClick('dev')"> 
-                    <label for="team-dev">개발팀 (전체)</label>
-                </div>
-                <div class="member-item">
-                    <input type="checkbox" checked class="member-check dev-member" data-user="user-kim" onchange="handleMemberClick('dev')"> 이경수
-                </div>
-                <div class="member-item">
-                    <input type="checkbox" checked class="member-check dev-member" data-user="user-lee" onchange="handleMemberClick('dev')"> 이영희
-                </div>
+        <aside class="sidebar" id="filter-sidebar">
+            <div class="sidebar-header">
+                <h3>팀/사원 필터</h3>
+                <button class="sidebar-toggle" id="filter-toggle" onclick="toggleFilterSidebar()" title="필터 접기/펼치기">◀</button>
             </div>
+            
+            <div class="sidebar-content">
+                <div class="team-group">
+                    <div class="team-header">
+                        <input type="checkbox" id="team-dev" checked onchange="handleTeamAllClick('dev')"> 
+                        <label for="team-dev">개발팀 (전체)</label>
+                    </div>
+                    <div class="member-item">
+                        <input type="checkbox" checked class="member-check dev-member" data-user="user-kim" onchange="handleMemberClick('dev')"> 이경수
+                    </div>
+                    <div class="member-item">
+                        <input type="checkbox" checked class="member-check dev-member" data-user="user-lee" onchange="handleMemberClick('dev')"> 이영희
+                    </div>
+                </div>
 
-            <div class="team-group">
-                <div class="team-header">
-                    <input type="checkbox" id="team-design" checked onchange="handleTeamAllClick('design')"> 
-                    <label for="team-design">디자인팀</label>
-                </div>
-                <div class="member-item">
-                    <input type="checkbox" checked class="member-check design-member" data-user="user-park" onchange="handleMemberClick('design')"> 박명수
-                </div>
-                <div class="member-item">
-                    <input type="checkbox" checked class="member-check design-member" data-user="user-haha" onchange="handleMemberClick('design')"> 하하
+                <div class="team-group">
+                    <div class="team-header">
+                        <input type="checkbox" id="team-design" checked onchange="handleTeamAllClick('design')"> 
+                        <label for="team-design">디자인팀</label>
+                    </div>
+                    <div class="member-item">
+                        <input type="checkbox" checked class="member-check design-member" data-user="user-park" onchange="handleMemberClick('design')"> 박명수
+                    </div>
+                    <div class="member-item">
+                        <input type="checkbox" checked class="member-check design-member" data-user="user-haha" onchange="handleMemberClick('design')"> 하하
+                    </div>
                 </div>
             </div>
         </aside>
@@ -592,7 +706,7 @@
         document.getElementById('userInfo').textContent = `${currentUser.name} (${getRoleName(currentUser.role)})`;
 
         // 현재 페이지 감지
-        const currentPage = window.location.pathname.split('/').pop() || 'lego_mockup.html';
+        const currentPage = window.location.pathname.split('/').pop() || 'entire_calendar.html';
         
         // 통일된 네비게이션 메뉴 렌더링
         function renderNavigation() {
@@ -604,7 +718,7 @@
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -615,7 +729,7 @@
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -625,7 +739,7 @@
             else {
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -671,24 +785,21 @@
         
         async function loadMockData() {
             try {
-                // users.json 로드
-                const usersResponse = await fetch('users.json');
-                if (usersResponse.ok) {
-                    const usersData = await usersResponse.json();
+                // users-data.js에서 로드 (전역 변수 USERS_DATA 사용)
+                if (typeof USERS_DATA !== 'undefined') {
                     USERS = {};
-                    usersData.users.forEach(user => {
+                    USERS_DATA.users.forEach(user => {
                         USERS[user.id] = { name: user.name, team: user.team };
                     });
-                    CATEGORIES = usersData.categories || {};
+                    CATEGORIES = USERS_DATA.categories || {};
+                    console.log('✅ 사용자 데이터 로드 완료:', USERS);
                 }
                 
-                // projects.json 로드
-                const projectsResponse = await fetch('projects.json');
-                if (projectsResponse.ok) {
-                    const projectsData = await projectsResponse.json();
+                // projects-data.js에서 로드 (전역 변수 PROJECTS_DATA 사용)
+                if (typeof PROJECTS_DATA !== 'undefined') {
                     // tasks를 객체로 변환
                     TASKS = {};
-                    projectsData.tasks.forEach(task => {
+                    PROJECTS_DATA.tasks.forEach(task => {
                         TASKS[task.id] = {
                             taskId: task.id,
                             title: task.소분류 || task.중분류,
@@ -696,6 +807,7 @@
                             totalHours: task.기준시간 || task.할당시간 || 0
                         };
                     });
+                    console.log('✅ 프로젝트 데이터 로드 완료:', TASKS);
                 }
             } catch (error) {
                 console.error('목업 데이터 로드 오류:', error);
@@ -714,14 +826,20 @@
             return 'planning';
         }
         
-        // localStorage에서 팀원이 등록한 스케줄 로드
-        function loadSchedulesFromLocalStorage() {
+        // localStorage에서 팀원이 등록한 스케줄 로드 (구버전 호환용 - 더 이상 사용 안 함)
+        function loadSchedulesFromLocalStorageOld() {
             try {
                 const saved = localStorage.getItem('taskSchedules');
                 if (saved) {
                     const userSchedules = JSON.parse(saved);
-                    console.log('📥 localStorage에서 스케줄 로드:', userSchedules);
-                    return userSchedules;
+                    console.log('📥 localStorage에서 스케줄 로드 (구버전):', userSchedules);
+                    // 배열인지 확인
+                    if (Array.isArray(userSchedules)) {
+                        return userSchedules;
+                    } else {
+                        console.warn('⚠️ taskSchedules가 배열이 아닙니다:', userSchedules);
+                        return [];
+                    }
                 }
             } catch (error) {
                 console.error('스케줄 로드 오류:', error);
@@ -755,6 +873,11 @@
         // localStorage 스케줄을 TASK_ASSIGNMENTS 형식으로 변환
         function convertUserSchedulesToAssignments(userSchedules) {
             const converted = [];
+            // 배열이 아닌 경우 처리
+            if (!Array.isArray(userSchedules)) {
+                console.warn('⚠️ userSchedules가 배열이 아닙니다:', userSchedules);
+                return converted;
+            }
             userSchedules.forEach(schedule => {
                 const userId = getUserByName(schedule.userName);
                 if (!userId) return;
@@ -791,17 +914,7 @@
 
         // 테스크 배정 스케줄 (실제 작업 일정) - localStorage와 JSON에서 로드
         let TASK_ASSIGNMENTS = [];
-        
-        // 초기 로드 시 목업 데이터 로드 및 스케줄 병합
-        (async function() {
-            await loadMockData();
-            
-            // localStorage에서 팀원이 등록한 스케줄 병합
-            const userSchedules = loadSchedulesFromLocalStorage();
-            const convertedSchedules = convertUserSchedulesToAssignments(userSchedules);
-            TASK_ASSIGNMENTS = [...TASK_ASSIGNMENTS, ...convertedSchedules];
-            console.log('📊 전체 스케줄:', TASK_ASSIGNMENTS);
-        })();
+        let dataLoaded = false; // 데이터 로드 완료 플래그
         
         // ============================================
         // 📅 헬퍼 함수: TASK_ASSIGNMENTS로부터 날짜별 스케줄 생성
@@ -887,6 +1000,23 @@
             teamAllCb.checked = (members.length === checkedCount);
             
             syncCalendar();
+        }
+
+        // 필터 사이드바 접기/펼치기
+        function toggleFilterSidebar() {
+            const sidebar = document.getElementById('filter-sidebar');
+            const toggleBtn = document.getElementById('filter-toggle');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            // 버튼 방향 변경
+            if (sidebar.classList.contains('collapsed')) {
+                toggleBtn.textContent = '▶';
+                toggleBtn.title = '필터 펼치기';
+            } else {
+                toggleBtn.textContent = '◀';
+                toggleBtn.title = '필터 접기';
+            }
         }
 
         // 3. 캘린더 화면 동기화
@@ -1228,8 +1358,24 @@
         // 📅 주별 뷰 동적 생성
         // ============================================
         
-        // 현재 주별 뷰에 표시할 날짜 배열 (기본: 2/27~3/3)
-        let currentWeekDates = ['2023-02-27', '2023-02-28', '2023-03-01', '2023-03-02', '2023-03-03'];
+        // 현재 주별 뷰에 표시할 날짜 배열 (오늘 날짜가 속한 주의 월~금)
+        function getCurrentWeekDates() {
+            const today = new Date();
+            const day = today.getDay(); // 0(일) ~ 6(토)
+            const mondayOffset = day === 0 ? -6 : 1 - day; // 월요일까지의 거리
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + mondayOffset);
+            
+            const weekDates = [];
+            for (let i = 0; i < 5; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                weekDates.push(dateStr);
+            }
+            return weekDates;
+        }
+        let currentWeekDates = getCurrentWeekDates();
         
         function generateWeekView(weekDates = currentWeekDates) {
             const weekGrid = document.getElementById('week-view-grid');
@@ -1279,7 +1425,7 @@
                             const leftPercent = (100 / columnCount) * index;
                             const rightPercent = 100 - leftPercent - widthPercent;
                             
-                            const note = schedule.note ? `<br><small style="opacity:0.7;">${schedule.note}</small>` : '';
+                            const note = schedule.note ? `<br><small style="opacity:1;">${schedule.note}</small>` : '';
                             const noteText = schedule.note ? schedule.note : '';
                             
                             // 툴팁 HTML
@@ -1407,7 +1553,39 @@
                     
                     const tooltip = this.querySelector('.task-detail-tooltip');
                     if (tooltip) {
+                        // 먼저 표시하여 실제 크기 측정 (visibility: hidden으로 보이지 않게)
+                        tooltip.style.visibility = 'hidden';
+                        tooltip.style.display = 'block';
                         tooltip.classList.add('force-show');
+                        
+                        // fixed 위치 계산
+                        const rect = this.getBoundingClientRect();
+                        const tooltipHeight = tooltip.offsetHeight;
+                        const tooltipWidth = tooltip.offsetWidth;
+                        
+                        // 툴팁을 태스크 블록 위에 표시
+                        let top = rect.top - tooltipHeight - 8;
+                        let left = rect.left + (rect.width / 2);
+                        
+                        // 화면 밖으로 나가지 않도록 조정
+                        if (top < 10) {
+                            // 위쪽 공간이 부족하면 아래쪽에 표시
+                            top = rect.bottom + 8;
+                        }
+                        if (left - (tooltipWidth / 2) < 10) {
+                            left = tooltipWidth / 2 + 10;
+                        } else if (left + (tooltipWidth / 2) > window.innerWidth - 10) {
+                            left = window.innerWidth - (tooltipWidth / 2) - 10;
+                        }
+                        
+                        tooltip.style.top = `${top}px`;
+                        tooltip.style.left = `${left}px`;
+                        tooltip.style.transform = 'translateX(-50%)';
+                        tooltip.style.visibility = 'visible';
+                        tooltip.style.setProperty('opacity', '1', 'important'); // 투명도 제거 - 완전 불투명 (!important)
+                        tooltip.style.setProperty('background-color', '#ffffff', 'important'); // 배경색 명시적 설정 (!important)
+                        tooltip.style.setProperty('background', '#ffffff', 'important'); // 배경 명시적 설정 (!important)
+                        tooltip.style.zIndex = '9999999'; // 최상위 z-index 명시적 설정
                         console.log('✅ 툴팁 표시');
                     }
                 };
@@ -1422,6 +1600,8 @@
                     const tooltip = this.querySelector('.task-detail-tooltip');
                     if (tooltip) {
                         tooltip.classList.remove('force-show');
+                        tooltip.style.visibility = 'hidden';
+                        tooltip.style.display = 'none';
                         console.log('❌ 툴팁 숨김');
                     }
                 };
@@ -1456,7 +1636,39 @@
                         console.log('찾은 툴팁:', tooltip);
                         
                         if (tooltip) {
+                            // 먼저 표시하여 실제 크기 측정 (visibility: hidden으로 보이지 않게)
+                            tooltip.style.visibility = 'hidden';
+                            tooltip.style.display = 'block';
                             tooltip.classList.add('force-show');
+                            
+                            // fixed 위치 계산
+                            const rect = taskBlock.getBoundingClientRect();
+                            const tooltipHeight = tooltip.offsetHeight;
+                            const tooltipWidth = tooltip.offsetWidth;
+                            
+                            // 툴팁을 태스크 블록 위에 표시
+                            let top = rect.top - tooltipHeight - 8;
+                            let left = rect.left + (rect.width / 2);
+                            
+                            // 화면 밖으로 나가지 않도록 조정
+                            if (top < 10) {
+                                // 위쪽 공간이 부족하면 아래쪽에 표시
+                                top = rect.bottom + 8;
+                            }
+                            if (left - (tooltipWidth / 2) < 10) {
+                                left = tooltipWidth / 2 + 10;
+                            } else if (left + (tooltipWidth / 2) > window.innerWidth - 10) {
+                                left = window.innerWidth - (tooltipWidth / 2) - 10;
+                            }
+                            
+                            tooltip.style.top = `${top}px`;
+                            tooltip.style.left = `${left}px`;
+                            tooltip.style.transform = 'translateX(-50%)';
+                            tooltip.style.visibility = 'visible';
+                            tooltip.style.setProperty('opacity', '1', 'important'); // 투명도 제거 - 완전 불투명 (!important)
+                            tooltip.style.setProperty('background-color', '#ffffff', 'important'); // 배경색 명시적 설정 (!important)
+                            tooltip.style.setProperty('background', '#ffffff', 'important'); // 배경 명시적 설정 (!important)
+                            tooltip.style.zIndex = '9999999'; // 최상위 z-index 명시적 설정
                             console.log('✅ 툴팁 표시');
                         }
                     }
@@ -1474,6 +1686,8 @@
                         const tooltip = taskBlock.querySelector('.task-detail-tooltip');
                         if (tooltip) {
                             tooltip.classList.remove('force-show');
+                            tooltip.style.visibility = 'hidden';
+                            tooltip.style.display = 'none';
                             console.log('❌ 툴팁 숨김');
                         }
                     }
@@ -1487,15 +1701,20 @@
         // 📅 월별 뷰 현재 상태
         // ============================================
         
-        let currentYear = 2023;
-        let currentMonth = 3;
+        // 오늘 날짜 기준으로 초기화
+        const today = new Date();
+        let currentYear = today.getFullYear();
+        let currentMonth = today.getMonth() + 1;
         
         // ============================================
         // 📆 일별 뷰 동적 생성
         // ============================================
         
-        let currentDayDate = '2023-03-01';
-        let currentDayDateDisplay = '2023년 3월 1일 (수요일)';
+        // 오늘 날짜 기준으로 초기화
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+        let currentDayDate = todayStr;
+        let currentDayDateDisplay = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일 (${dayNames[today.getDay()]})`;
         
         function generateDayView(dateStr = currentDayDate, dateDisplay = currentDayDateDisplay) {
             const dayGrid = document.getElementById('day-view-grid');
@@ -1718,7 +1937,13 @@
         // 📅 월별 뷰 동적 생성
         // ============================================
         
-        function generateMonthView(year = 2023, month = 3) {
+        function generateMonthView(year, month) {
+            // 기본값이 없으면 오늘 날짜 사용
+            if (!year || !month) {
+                const today = new Date();
+                year = year || today.getFullYear();
+                month = month || today.getMonth() + 1;
+            }
             const monthGrid = document.getElementById('month-view-grid');
             monthGrid.innerHTML = '';
             
@@ -1907,8 +2132,10 @@
                     taskBar.style.left = `${leftPosition}px`;
                     taskBar.style.width = `${barWidth}px`;
                     
+                    // 텍스트를 별도 요소로 추가 (textContent는 자식 요소를 제거하므로)
                     const daysText = barSpan > 1 ? ` (${barSpan}일)` : '';
-                    taskBar.textContent = `${user.name}: ${range.title}${daysText}`;
+                    const textNode = document.createTextNode(`${user.name}: ${range.title}${daysText}`);
+                    taskBar.appendChild(textNode);
                     
                     // 커스텀 툴팁 추가
                     const tooltip = document.createElement('div');
@@ -1931,7 +2158,7 @@
                         goToWeekView(startDate);
                     });
                     
-                    // 같은 테스크 하이라이트
+                    // 같은 테스크 하이라이트 및 툴팁 표시
                     taskBar.addEventListener('mouseenter', function() {
                         // 같은 task_id를 가진 모든 테스크 바 하이라이트
                         const taskId = this.getAttribute('data-task-id');
@@ -1944,6 +2171,57 @@
                                 console.log('✅ 하이라이트 추가:', barTaskId);
                             }
                         });
+                        
+                        // 툴팁 표시 및 위치 설정
+                        const tooltip = this.querySelector('.month-task-tooltip');
+                        if (tooltip) {
+                            console.log('✅ 툴팁 찾음:', tooltip);
+                            
+                            const rect = this.getBoundingClientRect();
+                            
+                            // 먼저 표시하여 실제 크기 측정 (화면 밖에 배치)
+                            tooltip.style.position = 'fixed';
+                            tooltip.style.display = 'block';
+                            tooltip.style.visibility = 'hidden';
+                            tooltip.style.top = '-9999px';
+                            tooltip.style.left = '-9999px';
+                            
+                            // 실제 크기 측정
+                            const actualHeight = tooltip.offsetHeight || 100;
+                            const actualWidth = tooltip.offsetWidth || 200;
+                            
+                            console.log('📐 툴팁 크기:', { actualHeight, actualWidth });
+                            console.log('📐 테스크 바 위치:', { top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+                            
+                            // 툴팁을 테스크 바 위에 표시
+                            let top = rect.top - actualHeight - 8;
+                            let left = rect.left + (rect.width / 2);
+                            
+                            // 화면 밖으로 나가지 않도록 조정
+                            if (top < 10) {
+                                // 위쪽 공간이 부족하면 아래쪽에 표시
+                                top = rect.bottom + 8;
+                            }
+                            if (left - (actualWidth / 2) < 10) {
+                                left = actualWidth / 2 + 10;
+                            } else if (left + (actualWidth / 2) > window.innerWidth - 10) {
+                                left = window.innerWidth - (actualWidth / 2) - 10;
+                            }
+                            
+                            // 위치 설정
+                            tooltip.style.top = `${top}px`;
+                            tooltip.style.left = `${left}px`;
+                            tooltip.style.transform = 'translateX(-50%)';
+                            tooltip.style.visibility = 'visible';
+                            tooltip.style.setProperty('opacity', '1', 'important'); // 투명도 제거 - 완전 불투명 (!important)
+                            tooltip.style.setProperty('background-color', '#ffffff', 'important'); // 배경색 명시적 설정 (!important)
+                            tooltip.style.setProperty('background', '#ffffff', 'important'); // 배경 명시적 설정 (!important)
+                            tooltip.style.zIndex = '9999999'; // 최상위 z-index 명시적 설정
+                            
+                            console.log('✅ 툴팁 표시 완료:', { top, left });
+                        } else {
+                            console.warn('⚠️ 툴팁을 찾을 수 없습니다');
+                        }
                     });
                     
                     taskBar.addEventListener('mouseleave', function() {
@@ -1951,6 +2229,13 @@
                         document.querySelectorAll('.month-task-bar').forEach(bar => {
                             bar.classList.remove('same-task-highlight');
                         });
+                        
+                        // 툴팁 숨김
+                        const tooltip = this.querySelector('.month-task-tooltip');
+                        if (tooltip) {
+                            tooltip.style.display = 'none';
+                            tooltip.style.visibility = 'hidden';
+                        }
                     });
                     
                     gridElement.appendChild(taskBar);
@@ -2023,30 +2308,43 @@
         // 🚀 페이지 로드 시 초기화
         // ============================================
         
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             console.log('📅 캘린더 초기화 중...');
             
-            // 로그인 체크
-            // 0. localStorage에서 스케줄 데이터 로드
-            loadSchedulesFromLocalStorage();
+            // 1. 데이터 로드 (사전에 등록된 유저와 일정 데이터)
+            await loadMockData();
+            await loadSchedulesFromLocalStorage();
+            dataLoaded = true;
+            console.log('📊 전체 스케줄:', TASK_ASSIGNMENTS.length, '개');
             
-            // 1. 월별 뷰 생성 (기본: 2023년 3월)
-            generateMonthView(2023, 3);
+            // 오늘 날짜 기준으로 초기화
+            const today = new Date();
+            const todayYear = today.getFullYear();
+            const todayMonth = today.getMonth() + 1;
+            const todayDate = `${todayYear}-${String(todayMonth).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+            const todayDisplay = `${todayYear}년 ${todayMonth}월 ${today.getDate()}일 (${dayNames[today.getDay()]})`;
+            
+            // 주별 뷰 날짜 업데이트
+            currentWeekDates = getCurrentWeekDates();
+            
+            // 2. 월별 뷰 생성 (오늘 날짜 기준)
+            generateMonthView(todayYear, todayMonth);
             console.log('✅ 월별 뷰 생성 완료!');
             
-            // 2. 주별 뷰 생성 (기본: 2/27~3/3 주)
+            // 3. 주별 뷰 생성 (오늘이 속한 주)
             generateWeekView();
             console.log('✅ 주별 뷰 생성 완료!');
             
-            // 3. 일별 뷰 생성 (기본: 3월 1일)
-            generateDayView();
+            // 4. 일별 뷰 생성 (오늘 날짜)
+            generateDayView(todayDate, todayDisplay);
             console.log('✅ 일별 뷰 생성 완료!');
             
-            // 4. 초기 네비게이션 버튼 표시 (월별 뷰가 기본)
+            // 5. 초기 네비게이션 버튼 표시 (월별 뷰가 기본)
             document.getElementById('prev-btn').style.display = 'block';
             document.getElementById('next-btn').style.display = 'block';
             
-            // 5. 초기 필터 적용 (월별 뷰의 테스크 바도 포함)
+            // 6. 초기 필터 적용 (월별 뷰의 테스크 바도 포함)
             setTimeout(() => {
                 syncCalendar();
                 console.log('✅ 초기 필터 적용 완료!');
@@ -2054,6 +2352,50 @@
             
             console.log('🎉 모든 뷰 초기화 완료!');
         });
+        
+        // localStorage 변경 감지 (다른 탭에서 스케줄 등록 시)
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'projectSchedules') {
+                loadSchedulesFromLocalStorage().then(() => {
+                    // 현재 활성화된 뷰 재생성
+                    const activeView = document.querySelector('.calendar-grid.active');
+                    if (activeView) {
+                        if (activeView.classList.contains('month-view')) {
+                            generateMonthView(currentYear, currentMonth);
+                        } else if (activeView.classList.contains('week-view')) {
+                            generateWeekView();
+                        } else if (activeView.classList.contains('day-view')) {
+                            generateDayView(currentDayDate, currentDayDateDisplay);
+                        }
+                        syncCalendar();
+                    }
+                });
+            }
+        });
+        
+        // 주기적으로 체크 (같은 탭에서도 업데이트)
+        setInterval(async function() {
+            if (dataLoaded) {
+                const beforeCount = TASK_ASSIGNMENTS.length;
+                await loadSchedulesFromLocalStorage();
+                const afterCount = TASK_ASSIGNMENTS.length;
+                
+                // 데이터가 변경되었을 때만 뷰 재생성
+                if (beforeCount !== afterCount) {
+                    const activeView = document.querySelector('.calendar-grid.active');
+                    if (activeView) {
+                        if (activeView.classList.contains('month-view')) {
+                            generateMonthView(currentYear, currentMonth);
+                        } else if (activeView.classList.contains('week-view')) {
+                            generateWeekView();
+                        } else if (activeView.classList.contains('day-view')) {
+                            generateDayView(currentDayDate, currentDayDateDisplay);
+                        }
+                        syncCalendar();
+                    }
+                }
+            }
+        }, 10000); // 10초마다 체크
         
         
         // ============================================
@@ -2075,58 +2417,61 @@
         }
         
         async function loadSchedulesFromLocalStorage() {
-            // 먼저 JSON 파일에서 로드 시도
-            let data = await loadFromJSON();
-            
-            // JSON 파일이 없으면 localStorage에서 로드
-            if (!data) {
-                const saved = localStorage.getItem('projectSchedules');
-                if (!saved) return;
-                
-                try {
-                    data = JSON.parse(saved);
-                } catch (e) {
-                    return;
-                }
+            // localStorage에서 로드
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) {
+                console.log('⚠️ projectSchedules가 없습니다.');
+                // 기존 TASK_ASSIGNMENTS는 유지 (초기 로드가 아닌 경우)
+                return;
             }
             
-            if (data) {
-                try {
-                    const schedules = data.schedules || [];
+            try {
+                const data = JSON.parse(saved);
+                const schedules = data.schedules || [];
                 
-                console.log('📥 저장된 스케줄 로드:', schedules);
+                console.log('📥 저장된 스케줄 로드:', schedules.length, '개');
                 
-                // 사용자 매핑
-                const userMapping = {
-                    '이경수': 'user-kim',
-                    '문정석': 'user-lee',
-                    '김태형': 'user-park',
-                    '서재원': 'user-haha',
-                    '전상민': 'user-kim',
-                    '김도연': 'user-lee'
-                };
+                // 사용자 매핑 (이름 -> user ID)
+                const userMapping = {};
+                if (typeof USERS_DATA !== 'undefined') {
+                    USERS_DATA.users.forEach(user => {
+                        userMapping[user.name] = user.id;
+                    });
+                }
                 
-                // 카테고리 매핑
-                const categoryMapping = {
-                    '행사운영': 'planning',
-                    '경영기획': 'planning',
-                    '재무관리': 'development',
-                    '디자인': 'design',
-                    '교육운영': 'planning'
-                };
+                // 중복 방지를 위한 Set 사용
+                const existingAssignments = new Set();
+                TASK_ASSIGNMENTS.forEach(a => {
+                    existingAssignments.add(`${a.taskId}-${a.user}-${a.startDate}-${a.startTime}`);
+                });
                 
+                let addedCount = 0;
                 schedules.forEach(schedule => {
-                    const task = schedule.task;
-                    const userId = userMapping[schedule.user] || 'user-kim';
-                    const category = categoryMapping[task.대분류] || 'planning';
+                    const task = schedule.task || {};
+                    const userName = schedule.userName || schedule.user;
+                    const userId = userMapping[userName] || getUserByName(userName);
+                    
+                    if (!userId) {
+                        console.warn('⚠️ 사용자를 찾을 수 없습니다:', userName);
+                        return;
+                    }
+                    
+                    const category = getCategoryFromTask(task);
+                    const assignmentKey = `${schedule.taskId}-${userId}-${schedule.startDate}-${schedule.startTime}`;
+                    
+                    // 중복 체크
+                    if (existingAssignments.has(assignmentKey)) {
+                        return;
+                    }
                     
                     // TASKS에 추가 (중복 체크)
                     if (!TASKS[schedule.taskId]) {
                         TASKS[schedule.taskId] = {
                             taskId: schedule.taskId,
-                            title: `${task.중분류} - ${task.소분류}`,
+                            title: task.소분류 || task.중분류 || task.title || '테스크',
                             category: category,
-                            totalHours: task.할당시간
+                            totalHours: task.할당시간 || task.기준시간 || 0,
+                            projectId: task.projectId || task.사업명 || 'project-unknown'
                         };
                     }
                     
@@ -2138,12 +2483,16 @@
                         endDate: schedule.endDate,
                         startTime: schedule.startTime,
                         endTime: schedule.endTime,
-                        note: task.비고 || ''
+                        note: task.비고 || schedule.note || '',
+                        isUserScheduled: true
                     });
+                    
+                    existingAssignments.add(assignmentKey);
+                    addedCount++;
                 });
                 
-                console.log('✅ 스케줄 로드 완료 - TASKS:', TASKS);
-                console.log('✅ 스케줄 로드 완료 - TASK_ASSIGNMENTS:', TASK_ASSIGNMENTS);
+                console.log('✅ 스케줄 로드 완료 - TASKS:', Object.keys(TASKS).length, '개');
+                console.log('✅ 스케줄 로드 완료 - TASK_ASSIGNMENTS:', TASK_ASSIGNMENTS.length, '개 (새로 추가:', addedCount, '개)');
                 
             } catch (error) {
                 console.error('스케줄 로드 오류:', error);
@@ -2247,8 +2596,8 @@
             console.log('✅ 처리된 테스크:', TASKS);
             console.log('✅ 처리된 할당:', TASK_ASSIGNMENTS);
             
-            // 모든 뷰 재생성
-            generateMonthView(2023, 3);
+            // 모든 뷰 재생성 (현재 날짜 기준)
+            generateMonthView(currentYear, currentMonth);
             generateWeekView();
             generateDayView();
             syncCalendar();

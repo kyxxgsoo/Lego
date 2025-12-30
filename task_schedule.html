@@ -751,7 +751,7 @@
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'admin.html' ? 'active' : ''}" onclick="location.href='admin.html'">관리자 대시보드</button>
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -762,7 +762,7 @@
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'teamlead.html' ? 'active' : ''}" onclick="location.href='teamlead.html'">팀장 대시보드</button>
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -772,7 +772,7 @@
             else {
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'lego_mockup.html' ? 'active' : ''}" onclick="location.href='lego_mockup.html'">전체 캘린더</button>
+                    <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
@@ -1282,6 +1282,23 @@
             processExcelData(sampleData);
         }
         
+        // 데이터 변경 감지를 위한 해시 저장
+        let lastDataHash = null;
+        
+        function getDataHash() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) return null;
+            try {
+                const data = JSON.parse(saved);
+                // schedules와 projectData의 해시 생성
+                const schedulesHash = JSON.stringify(data.schedules || []);
+                const projectDataHash = JSON.stringify(data.projectData || []);
+                return schedulesHash + '|' + projectDataHash;
+            } catch (e) {
+                return null;
+            }
+        }
+        
         // 페이지 로드 시 저장된 데이터 복원 및 권한별 UI 설정
         window.onload = function() {
             // 팀장 권한에 따라 샘플 데이터 버튼 표시/숨김
@@ -1293,38 +1310,27 @@
             
             // 데이터 로드 (projects-data.js 우선, 없으면 localStorage)
             loadDataFromLocalStorage();
+            lastDataHash = getDataHash();
             
             // localStorage 변경 감지 (project_register.html에서 엑셀 업로드 시 자동 반영)
             window.addEventListener('storage', function(e) {
                 if (e.key === 'projectSchedules') {
-                    loadDataFromLocalStorage();
+                    const newHash = getDataHash();
+                    if (newHash !== lastDataHash) {
+                        loadDataFromLocalStorage();
+                        lastDataHash = newHash;
+                    }
                 }
             });
             
-            // 주기적으로 체크 (같은 탭에서도 업데이트)
+            // 주기적으로 체크 (데이터 변경 시에만 업데이트)
             setInterval(function() {
-                loadDataFromLocalStorage();
-            }, 3000);
-            
-            // 주기적으로 체크 (같은 탭에서도 업데이트)
-            setInterval(function() {
-                const saved = localStorage.getItem('projectSchedules');
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    // projectData가 변경되었거나 새로 추가되었으면 다시 로드
-                    if (data.projectData && data.projectData.length > 0) {
-                        if (projectData.length === 0 || JSON.stringify(projectData) !== JSON.stringify(data.projectData)) {
-                            loadDataFromLocalStorage();
-                        } else {
-                            // projectData는 같지만 schedules가 업데이트되었을 수 있음
-                            if (data.schedules) {
-                                schedules = data.schedules;
-                                filterMyTasks();
-                            }
-                        }
-                    }
+                const newHash = getDataHash();
+                if (newHash !== lastDataHash) {
+                    loadDataFromLocalStorage();
+                    lastDataHash = newHash;
                 }
-            }, 2000);
+            }, 10000); // 10초로 변경하여 깜빡임 감소
         };
     </script>
 </body>
