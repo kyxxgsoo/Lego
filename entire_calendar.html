@@ -230,6 +230,21 @@
             z-index: 100;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             pointer-events: auto;
+            left: 2px;
+            right: 2px;
+            max-width: calc(100% - 4px); /* 셀 너비를 넘지 않도록 */
+            box-sizing: border-box;
+        }
+        
+        /* 테스크 바 컨테이너 */
+        .task-bars-container {
+            position: absolute;
+            top: 24px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            overflow: hidden; /* 셀 밖으로 벗어나지 않도록 */
         }
         .month-task-bar:hover {
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -647,32 +662,8 @@
                 <button class="sidebar-toggle" id="filter-toggle" onclick="toggleFilterSidebar()" title="필터 접기/펼치기">◀</button>
             </div>
             
-            <div class="sidebar-content">
-                <div class="team-group">
-                    <div class="team-header">
-                        <input type="checkbox" id="team-dev" checked onchange="handleTeamAllClick('dev')"> 
-                        <label for="team-dev">개발팀 (전체)</label>
-                    </div>
-                    <div class="member-item">
-                        <input type="checkbox" checked class="member-check dev-member" data-user="user-kim" onchange="handleMemberClick('dev')"> 이경수
-                    </div>
-                    <div class="member-item">
-                        <input type="checkbox" checked class="member-check dev-member" data-user="user-lee" onchange="handleMemberClick('dev')"> 이영희
-                    </div>
-                </div>
-
-                <div class="team-group">
-                    <div class="team-header">
-                        <input type="checkbox" id="team-design" checked onchange="handleTeamAllClick('design')"> 
-                        <label for="team-design">디자인팀</label>
-                    </div>
-                    <div class="member-item">
-                        <input type="checkbox" checked class="member-check design-member" data-user="user-park" onchange="handleMemberClick('design')"> 박명수
-                    </div>
-                    <div class="member-item">
-                        <input type="checkbox" checked class="member-check design-member" data-user="user-haha" onchange="handleMemberClick('design')"> 하하
-                    </div>
-                </div>
+            <div class="sidebar-content" id="filter-content">
+                <!-- 동적으로 생성됨 -->
             </div>
         </aside>
     </div>
@@ -749,6 +740,76 @@
         
         // 네비게이션 렌더링
         renderNavigation();
+
+        // ============================================
+        // 👥 필터 사이드바 동적 생성
+        // ============================================
+        function renderFilterSidebar() {
+            const filterContent = document.getElementById('filter-content');
+            if (!filterContent) return;
+            
+            // users-data.js에서 사용자 데이터 로드
+            const users = typeof USERS_DATA !== 'undefined' ? USERS_DATA.users : [];
+            
+            // 관리자가 아닌 경우 자신의 팀만 표시
+            const isAdmin = currentUser.role === 'admin';
+            const userTeam = currentUser.team;
+            
+            // 팀별로 사용자 그룹화
+            const teamMap = {};
+            users.forEach(user => {
+                // 관리자가 아니면 자신의 팀만 표시
+                if (!isAdmin && user.team !== userTeam && user.role !== 'admin') {
+                    return;
+                }
+                
+                // admin 팀은 제외 (관리자는 필터에 표시하지 않음)
+                if (user.team === 'admin') {
+                    return;
+                }
+                
+                if (!teamMap[user.team]) {
+                    teamMap[user.team] = [];
+                }
+                teamMap[user.team].push(user);
+            });
+            
+            // 팀 이름 매핑
+            const teamNames = {
+                'dev': '개발팀',
+                'design': '디자인팀',
+                'planning': '기획팀'
+            };
+            
+            let html = '';
+            Object.keys(teamMap).sort().forEach(teamKey => {
+                const teamMembers = teamMap[teamKey];
+                const teamName = teamNames[teamKey] || teamKey;
+                
+                html += `
+                    <div class="team-group">
+                        <div class="team-header">
+                            <input type="checkbox" id="team-${teamKey}" checked onchange="handleTeamAllClick('${teamKey}')"> 
+                            <label for="team-${teamKey}">${teamName} (전체)</label>
+                        </div>
+                `;
+                
+                teamMembers.forEach(member => {
+                    html += `
+                        <div class="member-item">
+                            <input type="checkbox" checked class="member-check ${teamKey}-member" data-user="${member.id}" onchange="handleMemberClick('${teamKey}')"> ${member.name}
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+            
+            filterContent.innerHTML = html;
+        }
+        
+        // 페이지 로드 시 필터 렌더링
+        renderFilterSidebar();
 
         // ============================================
         // 📊 데이터 관리 영역 (Data Management)
@@ -1543,7 +1604,7 @@
                 if (!scheduleId) return;
                 
                 // 마우스 올렸을 때
-                taskBlock.onmouseenter = function() {
+                taskBlock.onmouseenter = function(e) {
                     console.log(`🖱️ [Task 블록] 호버 진입: ${scheduleId}`);
                     
                     // z-index 상승
@@ -1556,12 +1617,12 @@
                         tooltip.style.display = 'block';
                         tooltip.classList.add('force-show');
                         
-                        // fixed 위치 계산
+                        // 태스크 블록 위치 사용
                         const rect = this.getBoundingClientRect();
                         const tooltipHeight = tooltip.offsetHeight;
                         const tooltipWidth = tooltip.offsetWidth;
                         
-                        // 툴팁을 태스크 블록 위에 표시
+                        // 툴팁을 태스크 블록 중앙 바로 위에 고정
                         let top = rect.top - tooltipHeight - 8;
                         let left = rect.left + (rect.width / 2);
                         
@@ -1620,7 +1681,7 @@
                 hoverArea.onmouseleave = null;
                 
                 // 마우스 올렸을 때
-                hoverArea.onmouseenter = function() {
+                hoverArea.onmouseenter = function(e) {
                     console.log(`🖱️ 호버 진입: ${scheduleId}`);
                     
                     // 호버 영역의 z-index를 더 높게 설정
@@ -1642,19 +1703,19 @@
                             tooltip.style.display = 'block';
                             tooltip.classList.add('force-show');
                             
-                            // fixed 위치 계산 (호버 영역의 위치를 기준으로)
-                            const hoverRect = this.getBoundingClientRect();
+                            // 태스크 블록 위치 사용
+                            const taskRect = taskBlock.getBoundingClientRect();
                             const tooltipHeight = tooltip.offsetHeight;
                             const tooltipWidth = tooltip.offsetWidth;
                             
-                            // 툴팁을 호버 영역 위에 표시
-                            let top = hoverRect.top - tooltipHeight - 8;
-                            let left = hoverRect.left + (hoverRect.width / 2);
+                            // 툴팁을 태스크 블록 중앙 바로 위에 고정
+                            let top = taskRect.top - tooltipHeight - 8;
+                            let left = taskRect.left + (taskRect.width / 2);
                             
                             // 화면 밖으로 나가지 않도록 조정
                             if (top < 10) {
                                 // 위쪽 공간이 부족하면 아래쪽에 표시
-                                top = hoverRect.bottom + 8;
+                                top = taskRect.bottom + 8;
                             }
                             if (left - (tooltipWidth / 2) < 10) {
                                 left = tooltipWidth / 2 + 10;
@@ -1992,7 +2053,7 @@
             const taskRanges = findContinuousTaskRanges(year, month);
             console.log('📊 연속된 테스크 구간:', taskRanges);
             
-            // 현재 달 날짜들 - 간단한 날짜 셀만 생성
+            // 현재 달 날짜들 - 테스크 바를 위한 컨테이너 추가
             for (let date = 1; date <= lastDate; date++) {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
                 const dayOfWeek = (firstDayOfWeek + date - 1) % 7;
@@ -2002,10 +2063,11 @@
                 const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
                 const dayName = dayNames[dayOfWeek];
                 
-                // 간단한 날짜 셀 (테스크 바는 나중에 추가)
-                dateHTML += `<div class="cell" data-date="${dateStr}" data-cell-index="${cellCount}" onclick="goToDayView('${year}년 ${month}월 ${date}일 (${dayName})', event)" style="${weekendStyle}display:flex;flex-direction:column;align-items:start;padding:8px;position:relative;">`;
-                dateHTML += `<div style="font-weight:600;">${date}</div>`;
-                dateHTML += `<div class="schedule-indicator" id="schedule-${dateStr}"></div>`;
+                // 날짜 셀 (테스크 바 컨테이너 포함)
+                dateHTML += `<div class="cell" data-date="${dateStr}" data-cell-index="${cellCount}" onclick="goToDayView('${year}년 ${month}월 ${date}일 (${dayName})', event)" style="${weekendStyle}display:flex;flex-direction:column;align-items:start;padding:8px;position:relative;overflow:hidden;">`;
+                dateHTML += `<div style="font-weight:600;flex-shrink:0;">${date}</div>`;
+                dateHTML += `<div class="schedule-indicator" id="schedule-${dateStr}" style="flex-shrink:0;"></div>`;
+                dateHTML += `<div class="task-bars-container" data-date="${dateStr}" style="position:absolute;top:24px;left:0;right:0;bottom:0;pointer-events:none;overflow:visible;"></div>`;
                 dateHTML += `</div>`;
                 cellCount++;
             }
@@ -2025,93 +2087,17 @@
             // DOM이 렌더링된 후 테스크 바 추가
             setTimeout(() => {
                 const gridElement = monthGrid;
-                const firstDateCell = gridElement.querySelector('.cell[data-date]');
-                if (!firstDateCell) return;
+                const dateCells = gridElement.querySelectorAll('.cell[data-date]');
+                if (dateCells.length === 0) return;
                 
-                // 셀 크기 계산
-                const cellWidth = firstDateCell.offsetWidth;
-                const cellHeight = firstDateCell.offsetHeight;
-                const gridRect = gridElement.getBoundingClientRect();
-                
-                console.log('📐 셀 크기:', { cellWidth, cellHeight });
-                
-                // 전체 테스크를 대상으로 레이어 관리 (사용자 구분 없이)
-                const allTaskLayers = []; // [{ row: 0, occupiedCells: [0,1,2] }, ...]
+                // 전체 테스크를 대상으로 레이어 관리 (날짜별)
+                const dateLayers = {}; // { '2025-12-01': [{ layerIndex: 0, occupiedDates: [1,2,3] }], ... }
                 
                 taskRanges.forEach(range => {
-                const category = CATEGORIES[range.category];
-                const user = USERS[range.user];
-                
-                if (!user || !category) return;
-                
-                // 시작 날짜의 셀 인덱스 계산
-                const startCellIndex = firstDayOfWeek + range.startDate - 1;
-                const endCellIndex = firstDayOfWeek + range.endDate - 1;
-                const duration = range.endDate - range.startDate + 1;
-                
-                // 주(row) 계산
-                const startRow = Math.floor(startCellIndex / 7);
-                const endRow = Math.floor(endCellIndex / 7);
-                
-                // 같은 주 내에서만 바를 그림 (주를 넘어가면 여러 개로 분할)
-                for (let currentRow = startRow; currentRow <= endRow; currentRow++) {
-                    const rowStartIndex = currentRow * 7;
-                    const rowEndIndex = rowStartIndex + 6;
+                    const category = CATEGORIES[range.category];
+                    const user = USERS[range.user];
                     
-                    const barStartIndex = Math.max(startCellIndex, rowStartIndex);
-                    const barEndIndex = Math.min(endCellIndex, rowEndIndex);
-                    
-                    const barStartCol = barStartIndex % 7;
-                    const barEndCol = barEndIndex % 7;
-                    const barSpan = barEndCol - barStartCol + 1;
-                    
-                    // 현재 row에서 사용 가능한 y 위치 찾기 (전체 레이어 대상)
-                    let layerIndex = 0;
-                    let foundLayer = false;
-                    
-                    // 모든 레이어를 순회하며 사용 가능한 레이어 찾기
-                    for (let i = 0; i < allTaskLayers.length; i++) {
-                        const layer = allTaskLayers[i];
-                        
-                        // 다른 row는 무조건 겹치지 않음
-                        if (layer.row !== currentRow) continue;
-                        
-                        // 현재 레이어에 겹치는 셀이 있는지 확인
-                        let hasConflict = false;
-                        for (let cellIndex = barStartIndex; cellIndex <= barEndIndex; cellIndex++) {
-                            if (layer.occupiedCells.includes(cellIndex)) {
-                                hasConflict = true;
-                                break;
-                            }
-                        }
-                        
-                        if (!hasConflict) {
-                            // 이 레이어 사용 가능 - 셀 인덱스 추가
-                            layerIndex = i;
-                            foundLayer = true;
-                            for (let cellIndex = barStartIndex; cellIndex <= barEndIndex; cellIndex++) {
-                                layer.occupiedCells.push(cellIndex);
-                            }
-                            break;
-                        }
-                    }
-                    
-                    if (!foundLayer) {
-                        // 새 레이어 생성
-                        layerIndex = allTaskLayers.length;
-                        const occupiedCells = [];
-                        for (let cellIndex = barStartIndex; cellIndex <= barEndIndex; cellIndex++) {
-                            occupiedCells.push(cellIndex);
-                        }
-                        allTaskLayers.push({
-                            row: currentRow,
-                            occupiedCells: occupiedCells
-                        });
-                    }
-                    
-                    // 테스크 바 HTML 생성 - Grid에 직접 추가
-                    const barStartDate = Math.max(range.startDate, barStartIndex - firstDayOfWeek + 1);
-                    const barEndDate = Math.min(range.endDate, barEndIndex - firstDayOfWeek + 1);
+                    if (!user || !category) return;
                     
                     // 등록된 테스크인지 확인
                     const isScheduled = range.isUserScheduled || 
@@ -2121,73 +2107,123 @@
                             a.isUserScheduled
                         );
                     
-                    const taskBar = document.createElement('div');
-                    taskBar.className = `month-task-bar ${category.color} ${range.user} ${isScheduled ? 'scheduled' : ''}`;
-                    taskBar.setAttribute('data-task-id', range.taskId); // 같은 테스크 식별용
-                    taskBar.setAttribute('data-scheduled', isScheduled ? 'true' : 'false');
-                    
-                    // 픽셀 기반 위치 계산
-                    // 헤더 행(45px) + 현재 주 행까지의 높이
-                    const topPosition = 45 + (currentRow * cellHeight) + 24 + (layerIndex * 24);
-                    const leftPosition = barStartCol * cellWidth + 14;
-                    const barWidth = (barSpan * cellWidth) - 30; // 양쪽 여백 증가 (각 15px)
-                    
-                    taskBar.style.top = `${topPosition}px`;
-                    taskBar.style.left = `${leftPosition}px`;
-                    taskBar.style.width = `${barWidth}px`;
-                    
-                    // 텍스트를 별도 요소로 추가 (textContent는 자식 요소를 제거하므로)
-                    const daysText = barSpan > 1 ? ` (${barSpan}일)` : '';
-                    const textNode = document.createTextNode(`${user.name}: ${range.title}${daysText}`);
-                    taskBar.appendChild(textNode);
-                    
-                    // 커스텀 툴팁 추가
-                    const tooltip = document.createElement('div');
-                    tooltip.className = 'month-task-tooltip';
-                    tooltip.innerHTML = `
-                        <strong>${category.name} - ${range.title}</strong>
-                        <div>👤 담당: ${user.name}</div>
-                        <div>📅 기간: ${barStartDate}일 ~ ${barEndDate}일 (${barSpan}일)</div>
-                        <div>⏱️ 총 시간: ${range.totalHours || 0}시간</div>
-                    `;
-                    taskBar.appendChild(tooltip);
-                    console.log('🔧 툴팁 생성 완료:', tooltip, 'taskBar children:', taskBar.children.length);
-                    
-                    // 클릭 시 주별 뷰로 이동
-                    taskBar.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
+                    // 날짜 범위 내의 각 날짜에 대해 처리
+                    for (let date = range.startDate; date <= range.endDate; date++) {
+                        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                        const dateCell = gridElement.querySelector(`.cell[data-date="${dateStr}"]`);
+                        if (!dateCell) continue;
                         
-                        // 테스크 시작 날짜로 주별 뷰 이동
-                        const startDate = new Date(range.startDateStr);
-                        goToWeekView(startDate);
-                    });
-                    
-                    // 같은 테스크 하이라이트 및 툴팁 표시
-                    taskBar.addEventListener('mouseenter', function() {
-                        // 같은 task_id를 가진 모든 테스크 바 하이라이트
-                        const taskId = this.getAttribute('data-task-id');
-                        console.log('🎯 호버한 테스크 ID:', taskId); // 디버깅용
+                        const taskBarsContainer = dateCell.querySelector('.task-bars-container');
+                        if (!taskBarsContainer) continue;
                         
-                        document.querySelectorAll('.month-task-bar').forEach(bar => {
-                            const barTaskId = bar.getAttribute('data-task-id');
-                            if (barTaskId === taskId) {
-                                bar.classList.add('same-task-highlight');
-                                console.log('✅ 하이라이트 추가:', barTaskId);
+                        // 해당 날짜의 레이어 관리
+                        if (!dateLayers[dateStr]) {
+                            dateLayers[dateStr] = [];
+                        }
+                        
+                        // 사용 가능한 레이어 찾기 (같은 taskId가 아닌 레이어)
+                        let layerIndex = -1;
+                        for (let i = 0; i < dateLayers[dateStr].length; i++) {
+                            if (dateLayers[dateStr][i].taskId !== range.taskId) {
+                                layerIndex = i;
+                                break;
                             }
+                        }
+                        
+                        if (layerIndex === -1) {
+                            // 새 레이어 생성
+                            layerIndex = dateLayers[dateStr].length;
+                            dateLayers[dateStr].push({
+                                taskId: range.taskId,
+                                layerIndex: layerIndex
+                            });
+                        }
+                        
+                        const barSpan = range.endDate - range.startDate + 1;
+                        
+                        const taskBar = document.createElement('div');
+                        taskBar.className = `month-task-bar ${category.color} ${range.user} ${isScheduled ? 'scheduled' : ''}`;
+                        taskBar.setAttribute('data-task-id', range.taskId);
+                        taskBar.setAttribute('data-scheduled', isScheduled ? 'true' : 'false');
+                        taskBar.setAttribute('data-start-date', range.startDate);
+                        taskBar.setAttribute('data-end-date', range.endDate);
+                        taskBar.style.pointerEvents = 'auto'; // 부모의 pointer-events: none을 무시
+                        taskBar.style.cursor = 'pointer'; // 커서 변경
+                        
+                        // 셀 내부 상대 위치 설정 (적응형)
+                        taskBar.style.position = 'absolute';
+                        taskBar.style.top = `${layerIndex * 24}px`;
+                        taskBar.style.left = '2px';
+                        taskBar.style.right = '2px';
+                        taskBar.style.height = '22px';
+                        // width는 left/right로 자동 계산되므로 제거
+                        
+                        // 텍스트 추가
+                        const daysText = barSpan > 1 ? ` (${barSpan}일)` : '';
+                        const textNode = document.createTextNode(`${user.name}: ${range.title}${daysText}`);
+                        taskBar.appendChild(textNode);
+                        
+                        // 툴팁 추가 (body에 직접 추가하여 overflow 영향 없게)
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'month-task-tooltip';
+                        tooltip.setAttribute('data-task-bar-id', `task-bar-${range.taskId}-${range.user}-${range.startDate}`);
+                        tooltip.innerHTML = `
+                            <strong>${category.name} - ${range.title}</strong>
+                            <div>👤 담당: ${user.name}</div>
+                            <div>📅 기간: ${range.startDate}일 ~ ${range.endDate}일 (${barSpan}일)</div>
+                            <div>⏱️ 총 시간: ${range.totalHours || 0}시간</div>
+                        `;
+                        // body에 직접 추가 (셀의 overflow 영향 없게)
+                        document.body.appendChild(tooltip);
+                        // taskBar에 참조 저장
+                        taskBar.setAttribute('data-tooltip-id', tooltip.getAttribute('data-task-bar-id'));
+                        
+                        // 클릭 이벤트
+                        taskBar.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const startDate = new Date(range.startDateStr);
+                            goToWeekView(startDate);
                         });
                         
-                        // 툴팁 표시 및 위치 설정
-                        const tooltip = this.querySelector('.month-task-tooltip');
-                        if (tooltip) {
-                            console.log('✅ 툴팁 찾음:', tooltip);
+                        // 호버 이벤트
+                        let hoverTimeout = null;
+                        let isHovering = false;
+                        
+                        taskBar.addEventListener('mouseenter', function(e) {
+                            e.stopPropagation();
+                            const taskId = this.getAttribute('data-task-id');
+                            const tooltipId = this.getAttribute('data-tooltip-id');
                             
-                            const rect = this.getBoundingClientRect();
+                            // 기존 타임아웃 제거
+                            if (hoverTimeout) {
+                                clearTimeout(hoverTimeout);
+                                hoverTimeout = null;
+                            }
                             
-                            // 먼저 표시하여 실제 크기 측정 (화면 밖에 배치)
+                            isHovering = true;
+                            
+                            // 같은 task_id를 가진 모든 테스크 바 하이라이트
+                            document.querySelectorAll('.month-task-bar').forEach(bar => {
+                                const barTaskId = bar.getAttribute('data-task-id');
+                                if (barTaskId === taskId) {
+                                    bar.classList.add('same-task-highlight');
+                                }
+                            });
+                            
+                            // 툴팁 찾기 (body에서)
+                            const tooltip = document.querySelector(`.month-task-tooltip[data-task-bar-id="${tooltipId}"]`);
+                            if (!tooltip) {
+                                console.warn('⚠️ 툴팁을 찾을 수 없습니다:', tooltipId);
+                                return;
+                            }
+                            
+                            console.log('🖱️ 툴팁 표시 시도:', taskId);
+                            
+                            // 먼저 표시하여 실제 크기 측정 (visibility: hidden으로 보이지 않게)
                             tooltip.style.setProperty('position', 'fixed', 'important');
-                            tooltip.style.setProperty('display', 'block', 'important'); // !important로 강제 표시
-                            tooltip.style.setProperty('visibility', 'hidden', 'important'); // 크기 측정을 위해 숨김
+                            tooltip.style.setProperty('display', 'block', 'important');
+                            tooltip.style.setProperty('visibility', 'hidden', 'important');
                             tooltip.style.top = '0px';
                             tooltip.style.left = '0px';
                             tooltip.style.transform = 'none';
@@ -2195,15 +2231,16 @@
                             // 강제 리플로우를 위해 offsetHeight 읽기
                             void tooltip.offsetHeight;
                             
-                            // 실제 크기 측정
-                            const actualHeight = tooltip.offsetHeight || tooltip.scrollHeight || 100;
-                            const actualWidth = tooltip.offsetWidth || tooltip.scrollWidth || 200;
+                            // 태스크 바 위치 가져오기
+                            const rect = this.getBoundingClientRect();
+                            const tooltipHeight = tooltip.offsetHeight || tooltip.scrollHeight || 100;
+                            const tooltipWidth = tooltip.offsetWidth || tooltip.scrollWidth || 200;
                             
-                            console.log('📐 툴팁 크기:', { actualHeight, actualWidth });
-                            console.log('📐 테스크 바 위치:', { top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+                            console.log('📏 툴팁 크기:', tooltipWidth, 'x', tooltipHeight);
+                            console.log('📍 테스크 바 위치:', rect.left, rect.top, rect.width, rect.height);
                             
-                            // 툴팁을 테스크 바 위에 표시
-                            let top = rect.top - actualHeight - 8;
+                            // 툴팁을 태스크 바 중앙 바로 위에 고정 (일별/주별 뷰와 동일)
+                            let top = rect.top - tooltipHeight - 8;
                             let left = rect.left + (rect.width / 2);
                             
                             // 화면 밖으로 나가지 않도록 조정
@@ -2211,47 +2248,75 @@
                                 // 위쪽 공간이 부족하면 아래쪽에 표시
                                 top = rect.bottom + 8;
                             }
-                            if (left - (actualWidth / 2) < 10) {
-                                left = actualWidth / 2 + 10;
-                            } else if (left + (actualWidth / 2) > window.innerWidth - 10) {
-                                left = window.innerWidth - (actualWidth / 2) - 10;
+                            if (left - (tooltipWidth / 2) < 10) {
+                                left = tooltipWidth / 2 + 10;
+                            } else if (left + (tooltipWidth / 2) > window.innerWidth - 10) {
+                                left = window.innerWidth - (tooltipWidth / 2) - 10;
                             }
                             
-                            // 위치 설정
+                            console.log('📍 툴팁 위치:', left, top);
+                            
                             tooltip.style.top = `${top}px`;
                             tooltip.style.left = `${left}px`;
                             tooltip.style.transform = 'translateX(-50%)';
-                            tooltip.style.setProperty('display', 'block', 'important'); // display를 !important로 설정
-                            tooltip.style.setProperty('visibility', 'visible', 'important'); // visibility를 !important로 설정
-                            tooltip.style.setProperty('opacity', '1', 'important'); // 투명도 제거 - 완전 불투명 (!important)
-                            tooltip.style.setProperty('background-color', '#ffffff', 'important'); // 배경색 명시적 설정 (!important)
-                            tooltip.style.setProperty('background', '#ffffff', 'important'); // 배경 명시적 설정 (!important)
-                            tooltip.style.setProperty('z-index', '9999999', 'important'); // 최상위 z-index 명시적 설정
-                            tooltip.style.setProperty('pointer-events', 'none', 'important'); // 마우스 이벤트 차단
+                            tooltip.style.setProperty('display', 'block', 'important');
+                            tooltip.style.setProperty('visibility', 'visible', 'important');
+                            tooltip.style.setProperty('opacity', '1', 'important');
+                            tooltip.style.setProperty('background-color', '#ffffff', 'important');
+                            tooltip.style.setProperty('background', '#ffffff', 'important');
+                            tooltip.style.setProperty('z-index', '9999999', 'important');
+                            tooltip.style.setProperty('pointer-events', 'none', 'important');
                             
-                            console.log('✅ 툴팁 표시 완료:', { top, left, actualHeight, actualWidth, display: tooltip.style.display, visibility: tooltip.style.visibility });
-                        } else {
-                            console.warn('⚠️ 툴팁을 찾을 수 없습니다. taskBar:', this, 'children:', this.children);
-                        }
-                    });
-                    
-                    taskBar.addEventListener('mouseleave', function() {
-                        // 모든 하이라이트 제거
-                        document.querySelectorAll('.month-task-bar').forEach(bar => {
-                            bar.classList.remove('same-task-highlight');
+                            console.log('✅ 툴팁 표시 완료');
                         });
                         
-                        // 툴팁 숨김
-                        const tooltip = this.querySelector('.month-task-tooltip');
-                        if (tooltip) {
-                            tooltip.style.setProperty('display', 'none', 'important');
-                            tooltip.style.setProperty('visibility', 'hidden', 'important');
+                        taskBar.addEventListener('mouseleave', function(e) {
+                            e.stopPropagation();
+                            isHovering = false;
+                            
+                            // 약간의 지연을 두어 툴팁으로 마우스 이동 시간 제공
+                            hoverTimeout = setTimeout(() => {
+                                if (!isHovering) {
+                                    document.querySelectorAll('.month-task-bar').forEach(bar => {
+                                        bar.classList.remove('same-task-highlight');
+                                    });
+                                    
+                                    const tooltipId = this.getAttribute('data-tooltip-id');
+                                    const tooltip = document.querySelector(`.month-task-tooltip[data-task-bar-id="${tooltipId}"]`);
+                                    if (tooltip) {
+                                        tooltip.style.setProperty('display', 'none', 'important');
+                                        tooltip.style.setProperty('visibility', 'hidden', 'important');
+                                        console.log('❌ 툴팁 숨김');
+                                    }
+                                }
+                            }, 100); // 100ms 지연
+                        });
+                        
+                        // 툴팁에도 호버 이벤트 추가 (툴팁 위에 마우스가 있을 때는 숨기지 않음)
+                        const tooltipIdForEvent = taskBar.getAttribute('data-tooltip-id');
+                        const tooltipElement = document.querySelector(`.month-task-tooltip[data-task-bar-id="${tooltipIdForEvent}"]`);
+                        if (tooltipElement) {
+                            tooltipElement.addEventListener('mouseenter', function() {
+                                isHovering = true;
+                                if (hoverTimeout) {
+                                    clearTimeout(hoverTimeout);
+                                    hoverTimeout = null;
+                                }
+                            });
+                            
+                            tooltipElement.addEventListener('mouseleave', function() {
+                                isHovering = false;
+                                this.style.setProperty('display', 'none', 'important');
+                                this.style.setProperty('visibility', 'hidden', 'important');
+                                document.querySelectorAll('.month-task-bar').forEach(bar => {
+                                    bar.classList.remove('same-task-highlight');
+                                });
+                            });
                         }
-                    });
-                    
-                    gridElement.appendChild(taskBar);
-                    console.log(`📍 테스크 바 추가: ${range.title}, row:${currentRow}, col:${barStartCol}-${barEndCol}, top:${topPosition}, left:${leftPosition}, width:${barWidth}`);
-                }
+                        
+                        // 각 날짜 셀에 테스크 바 추가
+                        taskBarsContainer.appendChild(taskBar);
+                    }
                 });
                 
                 console.log('✅ 월별 뷰 테스크 바 렌더링 완료:', taskRanges.length);
@@ -2487,6 +2552,21 @@
             }
         }, 10000); // 10초마다 체크
         
+        // 화면 크기 변경 시 월별 뷰 재생성 (적응형 레이아웃)
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                const activeView = document.querySelector('.calendar-grid.active');
+                if (activeView && activeView.classList.contains('month-view')) {
+                    generateMonthView(currentYear, currentMonth);
+                    setTimeout(() => {
+                        syncCalendar();
+                    }, 200);
+                }
+            }, 300); // 디바운싱
+        });
+        
         
         // ============================================
         // 💾 localStorage에서 스케줄 데이터 로드
@@ -2542,7 +2622,8 @@
                     const userId = userMapping[userName] || getUserByName(userName);
                     
                     if (!userId) {
-                        console.warn('⚠️ 사용자를 찾을 수 없습니다:', userName);
+                        // 사용자를 찾을 수 없는 경우 경고만 출력하고 스킵 (에러가 아닌 경고)
+                        console.warn('⚠️ 사용자를 찾을 수 없습니다:', userName, '- 스케줄이 스킵됩니다.');
                         return;
                     }
                     

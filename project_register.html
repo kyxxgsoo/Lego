@@ -719,9 +719,27 @@
         function processExcelData(data) {
             console.log('📊 엑셀 데이터:', data);
             
+            // 기존 데이터 로드 (기존 프로젝트와 테스크 유지)
+            const saved = localStorage.getItem('projectSchedules');
+            let existingProjects = [];
+            let existingTasks = [];
+            let existingSchedules = [];
+            
+            if (saved) {
+                try {
+                    const existingData = JSON.parse(saved);
+                    existingProjects = existingData.projects || [];
+                    existingTasks = existingData.tasks || [];
+                    existingSchedules = existingData.schedules || [];
+                    console.log(`📦 기존 데이터 로드: 프로젝트 ${existingProjects.length}개, 테스크 ${existingTasks.length}개, 스케줄 ${existingSchedules.length}개`);
+                } catch (e) {
+                    console.error('기존 데이터 로드 오류:', e);
+                }
+            }
+            
             // 먼저 각 행을 기본 데이터로 변환
             const rawData = data.map((row, index) => ({
-                id: `task-${String(index + 1).padStart(3, '0')}`,
+                id: `task-${Date.now()}-${String(index + 1).padStart(3, '0')}`,
                 소속: row['소속'] || '',
                 이름: row['이름'] || '',
                 부서: row['부서'] || '',
@@ -735,6 +753,11 @@
             
             // 프로젝트별로 그룹화하여 프로젝트 생성
             const projectMap = {};
+            // 기존 프로젝트 먼저 추가
+            existingProjects.forEach(project => {
+                projectMap[project.name] = project;
+            });
+            // 새 프로젝트 추가 (기존 프로젝트와 이름이 같으면 업데이트)
             rawData.forEach(task => {
                 const projectName = task.사업명 || '미분류 프로젝트';
                 if (!projectMap[projectName]) {
@@ -745,10 +768,13 @@
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString()
                     };
+                } else {
+                    // 기존 프로젝트의 updatedAt 업데이트
+                    projectMap[projectName].updatedAt = new Date().toISOString();
                 }
             });
             
-            // 프로젝트 배열 생성
+            // 프로젝트 배열 생성 (기존 + 새)
             projects = Object.values(projectMap);
             
             // 소분류별로 그룹화하여 기준시간 계산 (할당시간의 합)
@@ -768,7 +794,7 @@
             });
             
             // 각 행에 해당 소분류의 기준시간 추가하고 프로젝트 ID 연결
-            tasks = rawData.map(task => {
+            const newTasks = rawData.map(task => {
                 const key = `${task.사업명}-${task.대분류}-${task.중분류}-${task.소분류}`;
                 const group = subCategoryGroups[key];
                 const project = projectMap[task.사업명 || '미분류 프로젝트'];
@@ -779,21 +805,55 @@
                 };
             });
             
+            // 기존 테스크와 새 테스크 병합 (기존 테스크는 유지, 새 테스크는 추가)
+            // 같은 사업명-대분류-중분류-소분류-이름-할당시간 조합이면 새 것으로 교체
+            const taskKeyMap = new Map();
+            existingTasks.forEach(task => {
+                const key = `${task.사업명}-${task.대분류}-${task.중분류}-${task.소분류}-${task.이름}-${task.할당시간}`;
+                taskKeyMap.set(key, task);
+            });
+            
+            // 새 테스크 추가 (기존과 같은 키가 있으면 교체, 없으면 추가)
+            newTasks.forEach(task => {
+                const key = `${task.사업명}-${task.대분류}-${task.중분류}-${task.소분류}-${task.이름}-${task.할당시간}`;
+                taskKeyMap.set(key, task);
+            });
+            
+            // 병합된 테스크 배열 생성
+            tasks = Array.from(taskKeyMap.values());
+            
             // 하위 호환성을 위한 projectData (점진적 마이그레이션)
             projectData = tasks;
+            
+            // 기존 스케줄 유지
+            schedules = existingSchedules;
 
             // 업로드 섹션 숨기고 메인 컨텐츠 표시
             document.getElementById('uploadSection').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
 
-            // 스케줄이 없거나 적으면 샘플 스케줄 생성 (절반만 등록)
-            const totalTasks = tasks.filter(t => t.할당시간 > 0).length;
-            const scheduledTaskIds = new Set(schedules.map(s => s.taskId));
-            const scheduledCount = scheduledTaskIds.size;
+            // 새로 추가된 테스크에 대해서만 스케줄 생성 (기존 스케줄은 유지)
+            const existingTaskIds = new Set(existingTasks.map(t => t.id));
+            const newTaskIds = new Set(newTasks.map(t => t.id));
+            const existingScheduledTaskIds = new Set(existingSchedules.map(s => s.taskId));
             
-            // 등록된 테스크가 전체의 절반 미만이면 샘플 스케줄 생성
-            if (scheduledCount < totalTasks * 0.4) {
-                schedules = createSampleSchedules();
+            // 새 테스크 중 스케줄이 없는 것들만 필터링
+            const newTasksWithoutSchedule = tasks.filter(t => 
+                newTaskIds.has(t.id) && 
+                !existingScheduledTaskIds.has(t.id) &&
+                t.할당시간 > 0
+            );
+            
+            // 새 테스크에 대한 샘플 스케줄 생성 (기존 스케줄에 추가)
+            if (newTasksWithoutSchedule.length > 0) {
+                // 임시로 tasks를 새 테스크만으로 설정하여 스케줄 생성
+                const originalTasks = tasks;
+                tasks = newTasksWithoutSchedule;
+                const newSchedules = createSampleSchedules();
+                tasks = originalTasks; // 원래 tasks 복원
+                
+                // 기존 스케줄에 새 스케줄 추가
+                schedules = [...existingSchedules, ...newSchedules];
             }
 
             // localStorage에 저장
@@ -803,7 +863,20 @@
             renderTaskBlocks();
             renderTeamList();
             
-            alert(`${data.length}개의 테스크가 등록되었습니다!`);
+            const newProjectCount = Object.values(projectMap).filter(p => 
+                !existingProjects.some(ep => ep.name === p.name)
+            ).length;
+            const totalProjectCount = projects.length;
+            const totalTaskCount = tasks.length;
+            
+            let message = `${data.length}개의 새 테스크가 등록되었습니다!\n`;
+            message += `총 프로젝트: ${totalProjectCount}개 (신규: ${newProjectCount}개)\n`;
+            message += `총 테스크: ${totalTaskCount}개`;
+            if (existingProjects.length > 0) {
+                message += `\n\n기존 프로젝트와 테스크는 유지되었습니다.`;
+            }
+            
+            alert(message);
             
             // 프로젝트 관리 페이지로 이동
             setTimeout(() => {
@@ -1473,6 +1546,12 @@
         
         // JSON 파일에서 데이터 로드
         async function loadFromJSON() {
+            // file:// 프로토콜에서는 fetch가 CORS 에러를 발생시키므로 localStorage로 바로 fallback
+            if (window.location.protocol === 'file:') {
+                console.log('file:// 프로토콜에서는 localStorage에서 로드합니다.');
+                return null;
+            }
+            
             try {
                 const response = await fetch('data.json');
                 if (!response.ok) {
@@ -1482,7 +1561,8 @@
                 const data = await response.json();
                 return data;
             } catch (error) {
-                console.error('JSON 파일 로드 오류:', error);
+                // CORS 에러나 기타 에러는 조용히 처리하고 localStorage로 fallback
+                console.log('JSON 파일 로드 실패, localStorage에서 로드합니다.');
                 return null;
             }
         }
@@ -1530,7 +1610,8 @@
             // 일부 테스크에 샘플 스케줄 추가
             const sampleSchedules = [];
             let scheduleCount = 0;
-            const today = new Date();
+            // 2025년 12월 1일부터 시작
+            const baseDate = new Date('2025-12-01');
             const scheduledTaskIds = new Set(); // 이미 등록된 taskId 추적
             
             // 테스크를 사람별로 그룹화
@@ -1586,9 +1667,9 @@
                         const chunkHours = Math.min(chunkSize, remainingHours);
                         if (chunkHours <= 0) break;
                         
-                        // 띄엄띄엄 날짜에 등록 (0일, 3일, 6일, 9일, 12일, 15일 후)
-                        const chunkDate = new Date(today);
-                        chunkDate.setDate(today.getDate() + scheduleCount * 2 + (i * 3));
+                        // 띄엄띄엄 날짜에 등록 (2025년 12월 기준)
+                        const chunkDate = new Date(baseDate);
+                        chunkDate.setDate(baseDate.getDate() + scheduleCount * 2 + (i * 3));
                         
                         // 시간도 띄엄띄엄 (09:00, 14:00, 10:00, 15:00, 11:00, 16:00)
                         const timeSlots = ['09:00', '14:00', '10:00', '15:00', '11:00', '16:00'];
@@ -1668,13 +1749,13 @@
                                     const chunkHours = Math.min(chunkSize, remainingHours);
                                     if (chunkHours <= 0) break;
                                     
-                                    // 띄엄띄엄 날짜에 등록
+                                    // 띄엄띄엄 날짜에 등록 (2025년 12월 기준)
                                     // 이경수 유저는 더 다양한 날짜 패턴
-                                    const chunkDate = new Date(today);
+                                    const chunkDate = new Date(baseDate);
                                     const dayOffset = isLeeGyeongSu 
                                         ? scheduleCount * 1 + (i * 2)  // 더 자주 등록
                                         : scheduleCount * 2 + (i * 2);
-                                    chunkDate.setDate(today.getDate() + dayOffset);
+                                    chunkDate.setDate(baseDate.getDate() + dayOffset);
                                     
                                     // 시간도 띄엄띄엄
                                     // 이경수 유저는 더 다양한 시간대
@@ -1714,9 +1795,9 @@
                                 scheduledTaskIds.add(task.id);
                                 scheduleCount++;
                             } else {
-                                // 일반 테스크는 연속으로 등록
-                                const startDate = new Date(today);
-                                startDate.setDate(today.getDate() + scheduleCount * 2);
+                                // 일반 테스크는 연속으로 등록 (2025년 12월 기준)
+                                const startDate = new Date(baseDate);
+                                startDate.setDate(baseDate.getDate() + scheduleCount * 2);
                                 
                                 // 할당 시간에 맞게 정확한 종료 시간 계산
                                 const startHour = 9;
