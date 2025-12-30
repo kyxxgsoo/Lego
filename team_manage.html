@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>팀 관리 - Lego</title>
+    <script src="users-data.js"></script>
+    <script src="projects-data.js"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        :root {
+            --bg-gray: #f4f6f8;
+            --border-color: #e5e7eb;
+            --primary-blue: #2563eb;
+            --text-dark: #1e293b;
+            --task-blue-bg: #dbeafe; --task-blue-text: #1e40af; --task-blue-border: #3b82f6;
+            --task-green-bg: #dcfce7; --task-green-text: #166534; --task-green-border: #22c55e;
+            --task-yellow-bg: #fef9c3; --task-yellow-text: #854d0e; --task-yellow-border: #eab308;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-gray);
+            color: var(--text-dark);
+        }
+
+        /* 사이드바 */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, #0f766e 0%, #0d9488 100%);
+            padding: 30px 20px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .logo {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .logo-subtitle {
+            color: #ccfbf1;
+            font-size: 0.85rem;
+            margin-bottom: 30px;
+        }
+
+        .user-profile {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
+        .user-role {
+            font-size: 0.85rem;
+            color: #ccfbf1;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #ccfbf1;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* 메인 컨텐츠 */
+        .main-content {
+            margin-left: 260px;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: var(--text-dark);
+        }
+
+        /* 필터 섹션 */
+        .filter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: white;
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        /* 팀원 그리드 */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .team-member-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .member-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .member-dept {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        /* 날짜 그리드 */
+        .date-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-top: 10px;
+        }
+
+        .date-cell {
+            aspect-ratio: 1;
+            position: relative;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+
+        .date-cell.has-tasks {
+            background: white;
+        }
+
+        .date-number {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .category-blocks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            justify-content: center;
+            width: 100%;
+            padding: 2px;
+        }
+
+        .category-block {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .category-block.planning {
+            background: var(--task-blue-border);
+        }
+
+        .category-block.development {
+            background: var(--task-green-border);
+        }
+
+        .category-block.design {
+            background: var(--task-yellow-border);
+        }
+
+        .weekday-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .weekday-cell {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 600;
+            padding: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 사이드바 -->
+    <aside class="sidebar">
+        <div class="logo">🧱 Lego</div>
+        <div class="logo-subtitle">팀장 대시보드</div>
+
+        <div class="user-profile">
+            <div class="user-name" id="userName">팀장</div>
+            <div class="user-role" id="userTeam">Team Lead</div>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="teamlead.html" class="nav-link">
+                    <span>📊</span> 팀장 대시보드
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="my_calendar.html" class="nav-link">
+                    <span>📆</span> 내 캘린더
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="entire_calendar.html" class="nav-link">
+                    <span>📅</span> 전체 캘린더
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="project_register.html" class="nav-link">
+                    <span>📄</span> 프로젝트 등록
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="task_schedule.html" class="nav-link">
+                    <span>📋</span> 테스크 관리
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="team_manage.html" class="nav-link active">
+                    <span>🏢</span> 팀 관리
+                </a>
+            </li>
+        </ul>
+
+        <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
+    </aside>
+
+    <!-- 메인 컨텐츠 -->
+    <main class="main-content">
+        <div class="header">
+            <h1>🏢 팀 관리</h1>
+        </div>
+
+        <!-- 필터 섹션 -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>프로젝트 선택</label>
+                    <select id="projectSelect">
+                        <option value="all">전체 프로젝트</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>월 선택</label>
+                    <select id="monthSelect">
+                        <!-- 동적 생성 -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 팀원 그리드 -->
+        <div class="team-grid" id="teamGrid">
+            <!-- 동적 생성 -->
+        </div>
+    </main>
+
+    <script>
+        // 로그인 체크
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+            alert('로그인이 필요합니다.');
+            window.location.href = 'login.html';
+        }
+
+        // 사용자 정보 표시
+        if (currentUser) {
+            document.getElementById('userName').textContent = currentUser.name;
+            const teamNames = {
+                'dev': '개발팀',
+                'design': '디자인팀',
+                'planning': '기획팀'
+            };
+            document.getElementById('userTeam').textContent = teamNames[currentUser.team] || '팀장';
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        // 데이터 변수
+        let USERS = {};
+        let CATEGORIES = {};
+        let TASKS = {};
+        let TASK_ASSIGNMENTS = [];
+        let PROJECTS = [];
+
+        // 카테고리 매핑
+        function getCategoryFromMajor(대분류) {
+            if (!대분류) return 'planning';
+            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영') || 대분류.includes('재무')) {
+                return 'planning';
+            } else if (대분류.includes('개발') || 대분류.includes('AI')) {
+                return 'development';
+            } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
+                return 'design';
+            }
+            return 'planning';
+        }
+
+        // 데이터 로드
+        async function loadData() {
+            // 사용자 데이터
+            if (typeof USERS_DATA !== 'undefined') {
+                USERS = {};
+                USERS_DATA.users.forEach(user => {
+                    USERS[user.id] = { name: user.name, team: user.team };
+                });
+                CATEGORIES = USERS_DATA.categories || {};
+            }
+
+            // 프로젝트 데이터
+            if (typeof PROJECTS_DATA !== 'undefined') {
+                PROJECTS = PROJECTS_DATA.projects || [];
+                TASKS = {};
+                PROJECTS_DATA.tasks.forEach(task => {
+                    TASKS[task.id] = {
+                        taskId: task.id,
+                        title: task.소분류 || task.중분류,
+                        category: getCategoryFromMajor(task.대분류),
+                        projectId: task.projectId,
+                        totalHours: task.기준시간 || 0
+                    };
+                });
+            }
+
+            // 스케줄 데이터 로드
+            await loadSchedulesFromLocalStorage();
+
+            // 프로젝트 선택 옵션 생성
+            const projectSelect = document.getElementById('projectSelect');
+            PROJECTS.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = project.name;
+                projectSelect.appendChild(option);
+            });
+
+            // 월 선택 옵션 생성 (최근 12개월)
+            const monthSelect = document.getElementById('monthSelect');
+            const today = new Date();
+            for (let i = 0; i < 12; i++) {
+                const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const option = document.createElement('option');
+                option.value = `${year}-${String(month).padStart(2, '0')}`;
+                option.textContent = `${year}년 ${month}월`;
+                if (i === 0) option.selected = true;
+                monthSelect.appendChild(option);
+            }
+
+            // 초기 렌더링
+            renderTeamGrid();
+        }
+
+        // localStorage에서 스케줄 로드
+        async function loadSchedulesFromLocalStorage() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) return;
+
+            try {
+                const data = JSON.parse(saved);
+                const schedules = data.schedules || [];
+
+                // 사용자 매핑
+                const userMapping = {};
+                if (typeof USERS_DATA !== 'undefined') {
+                    USERS_DATA.users.forEach(user => {
+                        userMapping[user.name] = user.id;
+                    });
+                }
+
+                TASK_ASSIGNMENTS = [];
+                schedules.forEach(schedule => {
+                    const task = schedule.task || {};
+                    const userName = schedule.userName || schedule.user;
+                    const userId = userMapping[userName] || schedule.user;
+
+                    if (!userId) return;
+
+                    const category = getCategoryFromMajor(task.대분류 || '');
+                    const hours = schedule.assignedHours || calculateHours(schedule.startTime, schedule.endTime, schedule.startDate, schedule.endDate);
+
+                    TASK_ASSIGNMENTS.push({
+                        taskId: schedule.taskId,
+                        user: userId,
+                        startDate: schedule.startDate,
+                        endDate: schedule.endDate,
+                        startTime: schedule.startTime,
+                        endTime: schedule.endTime,
+                        assignedHours: hours,
+                        category: category,
+                        projectId: task.projectId || schedule.task?.projectId || 'project-unknown'
+                    });
+                });
+            } catch (error) {
+                console.error('스케줄 로드 오류:', error);
+            }
+        }
+
+        // 시간 계산
+        function calculateHours(startTime, endTime, startDate, endDate) {
+            const start = new Date(`${startDate}T${startTime}`);
+            const end = new Date(`${endDate}T${endTime}`);
+            return (end - start) / (1000 * 60 * 60);
+        }
+
+        // 특정 날짜의 스케줄 가져오기
+        function getSchedulesForDate(dateStr, userId, projectId) {
+            return TASK_ASSIGNMENTS.filter(assignment => {
+                if (userId && assignment.user !== userId) return false;
+                if (projectId && projectId !== 'all' && assignment.projectId !== projectId) return false;
+
+                const targetDate = new Date(dateStr);
+                const startDate = new Date(assignment.startDate);
+                const endDate = new Date(assignment.endDate);
+
+                return targetDate >= startDate && targetDate <= endDate;
+            });
+        }
+
+        // 특정 날짜의 지배적 카테고리 찾기
+        function getDominantCategory(dateStr, userId, projectId) {
+            const schedules = getSchedulesForDate(dateStr, userId, projectId);
+            if (schedules.length === 0) return null;
+
+            // 카테고리별 시간 합계
+            const categoryHours = {};
+            schedules.forEach(schedule => {
+                const category = schedule.category || 'planning';
+                const hours = schedule.assignedHours || 0;
+                categoryHours[category] = (categoryHours[category] || 0) + hours;
+            });
+
+            // 가장 많은 시간을 차지하는 카테고리 찾기
+            let dominantCategory = null;
+            let maxHours = 0;
+            Object.keys(categoryHours).forEach(category => {
+                if (categoryHours[category] > maxHours) {
+                    maxHours = categoryHours[category];
+                    dominantCategory = category;
+                }
+            });
+
+            return dominantCategory;
+        }
+
+        // 월의 모든 날짜에 대한 카테고리 블록 생성
+        function getCategoryBlocksForMonth(year, month, userId, projectId) {
+            const lastDate = new Date(year, month, 0).getDate();
+            const blocks = [];
+
+            for (let date = 1; date <= lastDate; date++) {
+                const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                const category = getDominantCategory(dateStr, userId, projectId);
+                blocks.push({
+                    date: date,
+                    dateStr: dateStr,
+                    category: category
+                });
+            }
+
+            return blocks;
+        }
+
+        // 팀원 그리드 렌더링
+        function renderTeamGrid() {
+            const selectedMonth = document.getElementById('monthSelect').value;
+            const selectedProject = document.getElementById('projectSelect').value;
+            const [year, month] = selectedMonth.split('-').map(Number);
+
+            // 현재 사용자의 팀원만 필터링
+            const teamMembers = [];
+            if (typeof USERS_DATA !== 'undefined') {
+                USERS_DATA.users.forEach(user => {
+                    if (user.team === currentUser.team && user.role === 'user') {
+                        teamMembers.push(user);
+                    }
+                });
+            }
+
+            const teamGrid = document.getElementById('teamGrid');
+            teamGrid.innerHTML = '';
+
+            teamMembers.forEach(member => {
+                const blocks = getCategoryBlocksForMonth(year, month, member.id, selectedProject);
+                const card = createMemberCard(member, blocks, year, month);
+                teamGrid.appendChild(card);
+            });
+        }
+
+        // 팀원 카드 생성
+        function createMemberCard(member, blocks, year, month) {
+            const card = document.createElement('div');
+            card.className = 'team-member-card';
+
+            const firstDay = new Date(year, month - 1, 1);
+            const firstDayOfWeek = firstDay.getDay();
+            const lastDate = new Date(year, month, 0).getDate();
+
+            // 요일 헤더
+            const weekdayHeader = document.createElement('div');
+            weekdayHeader.className = 'weekday-header';
+            const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            weekdays.forEach(day => {
+                const cell = document.createElement('div');
+                cell.className = 'weekday-cell';
+                cell.textContent = day;
+                weekdayHeader.appendChild(cell);
+            });
+
+            // 날짜 그리드
+            const dateGrid = document.createElement('div');
+            dateGrid.className = 'date-grid';
+
+            // 첫 주의 빈 셀
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'date-cell';
+                dateGrid.appendChild(emptyCell);
+            }
+
+            // 날짜 셀
+            blocks.forEach(block => {
+                const cell = document.createElement('div');
+                cell.className = 'date-cell';
+                if (block.category) {
+                    cell.classList.add('has-tasks');
+                }
+
+                const dateNumber = document.createElement('div');
+                dateNumber.className = 'date-number';
+                dateNumber.textContent = block.date;
+                cell.appendChild(dateNumber);
+
+                if (block.category) {
+                    const categoryBlocks = document.createElement('div');
+                    categoryBlocks.className = 'category-blocks';
+                    const blockEl = document.createElement('div');
+                    blockEl.className = `category-block ${block.category}`;
+                    categoryBlocks.appendChild(blockEl);
+                    cell.appendChild(categoryBlocks);
+                }
+
+                dateGrid.appendChild(cell);
+            });
+
+            // 멤버 헤더
+            const memberHeader = document.createElement('div');
+            memberHeader.className = 'member-header';
+            const memberInfo = document.createElement('div');
+            const memberName = document.createElement('div');
+            memberName.className = 'member-name';
+            memberName.textContent = member.name;
+            const memberDept = document.createElement('div');
+            memberDept.className = 'member-dept';
+            memberDept.textContent = member.department || member.affiliation || '';
+            memberInfo.appendChild(memberName);
+            memberInfo.appendChild(memberDept);
+            memberHeader.appendChild(memberInfo);
+
+            card.appendChild(memberHeader);
+            card.appendChild(weekdayHeader);
+            card.appendChild(dateGrid);
+
+            return card;
+        }
+
+        // 이벤트 리스너
+        document.getElementById('projectSelect').addEventListener('change', renderTeamGrid);
+        document.getElementById('monthSelect').addEventListener('change', renderTeamGrid);
+
+        // 페이지 로드 시 데이터 로드
+        window.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
+
