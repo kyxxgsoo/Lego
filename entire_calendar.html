@@ -128,6 +128,7 @@
             flex-direction: column; overflow: hidden; /* 스크롤은 calendar-grid에서 처리 */
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             position: relative; /* fixed 툴팁의 기준점 */
+            z-index: 1; /* 분류 팝업보다 낮게 설정 */
         }
 
         .toolbar {
@@ -146,7 +147,9 @@
         .legend-wrapper { position: relative; margin-left: 10px; z-index: 9999999; }
         .legend-btn { background: #f1f5f9; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
         .legend-popup {
-            display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px;
+            display: none; position: fixed; /* fixed로 변경하여 부모 overflow 영향 없이 표시 */
+            left: 0;
+            top: 0;
             background: #ffffff !important; /* 명시적 흰색 배경 */
             background-color: #ffffff !important; /* 배경색 명시적 설정 */
             border: 1px solid var(--border-color);
@@ -154,13 +157,9 @@
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
             opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
             isolation: isolate; /* 부모 opacity 상속 차단 */
+            visibility: hidden; /* JavaScript로만 제어 */
         }
-        .legend-wrapper:hover .legend-popup { 
-            display: block !important;
-            opacity: 1 !important; /* 투명도 제거 - 완전 불투명 */
-            background: #ffffff !important; /* 명시적 흰색 배경 */
-            background-color: #ffffff !important; /* 배경색 명시적 설정 */
-        }
+        /* CSS 호버 규칙 제거 - JavaScript로만 제어 */
         .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 0.85rem; }
         .dot { width: 12px; height: 12px; border-radius: 3px; }
 
@@ -168,6 +167,8 @@
         .calendar-grid {
             flex: 1; overflow: auto; display: none;
             position: relative; /* 툴팁 위치 계산을 위한 기준점 */
+            z-index: 1; /* 분류 팝업보다 낮게 설정 */
+            isolation: isolate; /* stacking context 분리 - 분류 팝업과 독립적으로 */
         }
         
         /* 주별 뷰 */
@@ -347,7 +348,7 @@
             overflow: visible;
         }
         .cell-header { 
-            background: #fafafa; position: sticky; top: 0; z-index: 10;
+            background: #fafafa; position: sticky; top: 0; z-index: 0; /* 분류 팝업보다 낮게 설정 (0으로 변경) */
             display: flex; justify-content: center; align-items: center;
             font-size: 0.85rem; font-weight: 600; color: #64748b;
         }
@@ -386,9 +387,10 @@
         /* 중간 시간대 호버 영역 */
         .task-hover-area {
             pointer-events: auto;
+            z-index: 10000 !important; /* 기본 z-index를 높게 설정하여 task 블록 위에 표시 */
         }
         .task-hover-area:hover {
-            z-index: 1000 !important;
+            z-index: 10001 !important; /* 호버 시 더 높은 z-index */
         }
         /* JavaScript로 제어되는 강제 툴팁 표시 */
         .task-detail-tooltip.force-show {
@@ -608,14 +610,7 @@
                     </div>
                     <div class="legend-wrapper">
                         <button class="legend-btn">🎨 분류 (Legend)</button>
-                        <div class="legend-popup">
-                            <h4 style="margin:0 0 10px 0;">업무 소분류 가이드</h4>
-                            <div class="legend-item"><div class="dot" style="background:var(--task-blue-border)"></div> 기획 (Planning)</div>
-                            <div class="legend-item"><div class="dot" style="background:var(--task-green-border)"></div> 개발 (Development)</div>
-                            <div class="legend-item"><div class="dot" style="background:var(--task-yellow-border)"></div> 디자인 (Design)</div>
-                            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#64748b;line-height:1.4;">
-                                * 한 사람이 여러 소분류 업무를 수행할 수 있습니다.
-                        </div>
+                        <!-- 팝업은 JavaScript에서 body에 직접 append됨 -->
                     </div>
                 </div>
                 </div>
@@ -735,12 +730,11 @@
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
                 `;
             }
-            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리 (팀장 대시보드 제외)
+            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 관리, 테스크 관리 (팀장 대시보드, 프로젝트 등록 제외)
             else {
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
                 `;
@@ -1515,8 +1509,8 @@
                             const remainingHeight = totalHeight - (hourOffset * 80);
                             const cellHeight = Math.min(80 - 5, remainingHeight);
                             
-                            // 투명한 호버 영역 - 셀 전체 높이를 차지
-                            cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 8px); right: calc(${rightPercent}% + 8px); width: auto; top: 0; bottom: 0; z-index: 100; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
+                            // 투명한 호버 영역 - 셀 전체 높이를 차지 (z-index를 높여서 task 블록 위에 표시)
+                            cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 8px); right: calc(${rightPercent}% + 8px); width: auto; top: 0; bottom: 0; z-index: 10000; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
                         });
                     }
                     
@@ -1625,11 +1619,14 @@
                 hoverArea.onmouseenter = function() {
                     console.log(`🖱️ 호버 진입: ${scheduleId}`);
                     
+                    // 호버 영역의 z-index를 더 높게 설정
+                    this.style.zIndex = '10001';
+                    
                     const taskBlock = document.querySelector(`.task[data-schedule-id="${scheduleId}"]`);
                     console.log('찾은 블록:', taskBlock);
                     
                     if (taskBlock) {
-                        // 블록의 z-index를 올려서 호버 영역보다 위에 표시
+                        // 블록의 z-index를 올려서 호버 영역과 함께 표시
                         taskBlock.style.zIndex = '10000';
                         
                         const tooltip = taskBlock.querySelector('.task-detail-tooltip');
@@ -1641,19 +1638,19 @@
                             tooltip.style.display = 'block';
                             tooltip.classList.add('force-show');
                             
-                            // fixed 위치 계산
-                            const rect = taskBlock.getBoundingClientRect();
+                            // fixed 위치 계산 (호버 영역의 위치를 기준으로)
+                            const hoverRect = this.getBoundingClientRect();
                             const tooltipHeight = tooltip.offsetHeight;
                             const tooltipWidth = tooltip.offsetWidth;
                             
-                            // 툴팁을 태스크 블록 위에 표시
-                            let top = rect.top - tooltipHeight - 8;
-                            let left = rect.left + (rect.width / 2);
+                            // 툴팁을 호버 영역 위에 표시
+                            let top = hoverRect.top - tooltipHeight - 8;
+                            let left = hoverRect.left + (hoverRect.width / 2);
                             
                             // 화면 밖으로 나가지 않도록 조정
                             if (top < 10) {
                                 // 위쪽 공간이 부족하면 아래쪽에 표시
-                                top = rect.bottom + 8;
+                                top = hoverRect.bottom + 8;
                             }
                             if (left - (tooltipWidth / 2) < 10) {
                                 left = tooltipWidth / 2 + 10;
@@ -1677,6 +1674,9 @@
                 // 마우스 떠났을 때
                 hoverArea.onmouseleave = function() {
                     console.log(`🖱️ 호버 이탈: ${scheduleId}`);
+                    
+                    // 호버 영역의 z-index를 원래대로 복구
+                    this.style.zIndex = '10000';
                     
                     const taskBlock = document.querySelector(`.task[data-schedule-id="${scheduleId}"]`);
                     if (taskBlock) {
@@ -1834,8 +1834,8 @@
                         const leftPercent = (100 / totalColumns) * scheduleIndex;
                         const rightPercent = 100 - leftPercent - widthPercent;
                         
-                        // 투명한 호버 영역 - 셀 전체 높이 차지
-                        cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 0; bottom: 0; z-index: 100; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
+                        // 투명한 호버 영역 - 셀 전체 높이 차지 (z-index를 높여서 task 블록 위에 표시)
+                        cellContent += `<div class="task-hover-area ${schedule.user}" data-schedule-id="${scheduleId}" style="position: absolute; left: calc(${leftPercent}% + 4px); right: calc(${rightPercent}% + 4px); width: auto; top: 0; bottom: 0; z-index: 10000; background: rgba(255,0,0,0.05); cursor: pointer; pointer-events: auto;"></div>`;
                     });
                 }
                 
@@ -2147,6 +2147,7 @@
                         <div>⏱️ 총 시간: ${range.totalHours || 0}시간</div>
                     `;
                     taskBar.appendChild(tooltip);
+                    console.log('🔧 툴팁 생성 완료:', tooltip, 'taskBar children:', taskBar.children.length);
                     
                     // 클릭 시 주별 뷰로 이동
                     taskBar.addEventListener('click', (e) => {
@@ -2180,15 +2181,19 @@
                             const rect = this.getBoundingClientRect();
                             
                             // 먼저 표시하여 실제 크기 측정 (화면 밖에 배치)
-                            tooltip.style.position = 'fixed';
-                            tooltip.style.display = 'block';
-                            tooltip.style.visibility = 'hidden';
-                            tooltip.style.top = '-9999px';
-                            tooltip.style.left = '-9999px';
+                            tooltip.style.setProperty('position', 'fixed', 'important');
+                            tooltip.style.setProperty('display', 'block', 'important'); // !important로 강제 표시
+                            tooltip.style.setProperty('visibility', 'hidden', 'important'); // 크기 측정을 위해 숨김
+                            tooltip.style.top = '0px';
+                            tooltip.style.left = '0px';
+                            tooltip.style.transform = 'none';
+                            
+                            // 강제 리플로우를 위해 offsetHeight 읽기
+                            void tooltip.offsetHeight;
                             
                             // 실제 크기 측정
-                            const actualHeight = tooltip.offsetHeight || 100;
-                            const actualWidth = tooltip.offsetWidth || 200;
+                            const actualHeight = tooltip.offsetHeight || tooltip.scrollHeight || 100;
+                            const actualWidth = tooltip.offsetWidth || tooltip.scrollWidth || 200;
                             
                             console.log('📐 툴팁 크기:', { actualHeight, actualWidth });
                             console.log('📐 테스크 바 위치:', { top: rect.top, left: rect.left, width: rect.width, height: rect.height });
@@ -2212,15 +2217,17 @@
                             tooltip.style.top = `${top}px`;
                             tooltip.style.left = `${left}px`;
                             tooltip.style.transform = 'translateX(-50%)';
-                            tooltip.style.visibility = 'visible';
+                            tooltip.style.setProperty('display', 'block', 'important'); // display를 !important로 설정
+                            tooltip.style.setProperty('visibility', 'visible', 'important'); // visibility를 !important로 설정
                             tooltip.style.setProperty('opacity', '1', 'important'); // 투명도 제거 - 완전 불투명 (!important)
                             tooltip.style.setProperty('background-color', '#ffffff', 'important'); // 배경색 명시적 설정 (!important)
                             tooltip.style.setProperty('background', '#ffffff', 'important'); // 배경 명시적 설정 (!important)
-                            tooltip.style.zIndex = '9999999'; // 최상위 z-index 명시적 설정
+                            tooltip.style.setProperty('z-index', '9999999', 'important'); // 최상위 z-index 명시적 설정
+                            tooltip.style.setProperty('pointer-events', 'none', 'important'); // 마우스 이벤트 차단
                             
-                            console.log('✅ 툴팁 표시 완료:', { top, left });
+                            console.log('✅ 툴팁 표시 완료:', { top, left, actualHeight, actualWidth, display: tooltip.style.display, visibility: tooltip.style.visibility });
                         } else {
-                            console.warn('⚠️ 툴팁을 찾을 수 없습니다');
+                            console.warn('⚠️ 툴팁을 찾을 수 없습니다. taskBar:', this, 'children:', this.children);
                         }
                     });
                     
@@ -2233,8 +2240,8 @@
                         // 툴팁 숨김
                         const tooltip = this.querySelector('.month-task-tooltip');
                         if (tooltip) {
-                            tooltip.style.display = 'none';
-                            tooltip.style.visibility = 'hidden';
+                            tooltip.style.setProperty('display', 'none', 'important');
+                            tooltip.style.setProperty('visibility', 'hidden', 'important');
                         }
                     });
                     
@@ -2308,6 +2315,82 @@
         // 🚀 페이지 로드 시 초기화
         // ============================================
         
+        // 분류 툴팁 위치 설정 함수
+        function setupLegendTooltip() {
+            const legendWrapper = document.querySelector('.legend-wrapper');
+            const legendBtn = document.querySelector('.legend-btn');
+            let legendPopup = document.querySelector('.legend-popup');
+            
+            if (!legendWrapper || !legendBtn) return;
+            
+            // 팝업이 없으면 생성
+            if (!legendPopup) {
+                legendPopup = document.createElement('div');
+                legendPopup.className = 'legend-popup';
+                legendPopup.innerHTML = `
+                    <h4 style="margin:0 0 10px 0;">업무 소분류 가이드</h4>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-blue-border)"></div> 기획 (Planning)</div>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-green-border)"></div> 개발 (Development)</div>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-yellow-border)"></div> 디자인 (Design)</div>
+                    <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#64748b;line-height:1.4;">
+                        * 한 사람이 여러 소분류 업무를 수행할 수 있습니다.
+                    </div>
+                `;
+                // body에 직접 append하여 stacking context 문제 해결
+                document.body.appendChild(legendPopup);
+            }
+            
+            // 호버 시 툴팁 표시 및 위치 계산
+            legendWrapper.addEventListener('mouseenter', function() {
+                const rect = legendBtn.getBoundingClientRect();
+                
+                // 먼저 표시하여 실제 크기 측정 (화면 밖에 배치)
+                legendPopup.style.visibility = 'hidden';
+                legendPopup.style.setProperty('display', 'block', 'important'); // !important로 강제 표시
+                legendPopup.style.top = '0px';
+                legendPopup.style.left = '0px';
+                
+                // 강제 리플로우를 위해 offsetHeight 읽기
+                void legendPopup.offsetHeight;
+                
+                // 실제 크기 측정
+                const popupHeight = legendPopup.offsetHeight || legendPopup.scrollHeight || 200;
+                const popupWidth = legendPopup.offsetWidth || legendPopup.scrollWidth || 220;
+                
+                // 툴팁을 버튼 아래에 표시
+                let top = rect.bottom + 8;
+                let left = rect.left;
+                
+                // 화면 밖으로 나가지 않도록 조정
+                if (top + popupHeight > window.innerHeight - 10) {
+                    // 아래쪽 공간이 부족하면 위쪽에 표시
+                    top = rect.top - popupHeight - 8;
+                }
+                if (left + popupWidth > window.innerWidth - 10) {
+                    left = window.innerWidth - popupWidth - 10;
+                } else if (left < 10) {
+                    left = 10;
+                }
+                
+                // 위치 설정
+                legendPopup.style.top = `${top}px`;
+                legendPopup.style.left = `${left}px`;
+                legendPopup.style.setProperty('visibility', 'visible', 'important'); // !important로 강제 표시
+                legendPopup.style.setProperty('display', 'block', 'important'); // !important로 강제 표시
+                legendPopup.style.setProperty('opacity', '1', 'important');
+                legendPopup.style.setProperty('background-color', '#ffffff', 'important');
+                legendPopup.style.setProperty('background', '#ffffff', 'important');
+                legendPopup.style.setProperty('z-index', '9999999', 'important'); // !important로 강제 설정하여 다른 뷰에 가려지지 않도록
+                legendPopup.style.setProperty('position', 'fixed', 'important'); // position도 !important로 강제 설정
+            });
+            
+            // 호버 이탈 시 툴팁 숨김
+            legendWrapper.addEventListener('mouseleave', function() {
+                legendPopup.style.setProperty('display', 'none', 'important');
+                legendPopup.style.setProperty('visibility', 'hidden', 'important');
+            });
+        }
+        
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('📅 캘린더 초기화 중...');
             
@@ -2316,6 +2399,9 @@
             await loadSchedulesFromLocalStorage();
             dataLoaded = true;
             console.log('📊 전체 스케줄:', TASK_ASSIGNMENTS.length, '개');
+            
+            // 분류 툴팁 설정
+            setupLegendTooltip();
             
             // 오늘 날짜 기준으로 초기화
             const today = new Date();

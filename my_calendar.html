@@ -902,6 +902,10 @@
                     <div class="detail-label">할당 시간</div>
                     <div class="detail-value" id="detail-task-hours">-</div>
                 </div>
+                <div class="detail-row">
+                    <div class="detail-label">비고</div>
+                    <div class="detail-value" id="detail-task-note">-</div>
+                </div>
             </div>
         </div>
     </div>
@@ -947,12 +951,11 @@
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
                 `;
             }
-            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리 (팀장 대시보드 제외)
+            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 관리, 테스크 관리 (팀장 대시보드, 프로젝트 등록 제외)
             else {
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
                 `;
@@ -1136,7 +1139,8 @@
                             assignedHours: schedule.assignedHours || 0,
                             title: schedule.task ? (schedule.task.소분류 || schedule.task.사업명 || '테스크') : '테스크',
                             category: category,
-                            projectId: schedule.task ? schedule.task.사업명 : 'project-unknown'
+                            projectId: schedule.task ? schedule.task.사업명 : 'project-unknown',
+                            note: schedule.task ? (schedule.task.비고 || schedule.note || '') : (schedule.note || '')
                         };
                     });
                     
@@ -1366,6 +1370,19 @@
             });
         }
 
+        // 시간 계산 헬퍼 함수
+        function calculateHours(startTime, endTime) {
+            if (startTime === '00:00' && endTime === '23:59') {
+                return 24; // 종일
+            }
+            const start = startTime.split(':').map(Number);
+            const end = endTime.split(':').map(Number);
+            const startMinutes = start[0] * 60 + start[1];
+            const endMinutes = end[0] * 60 + end[1];
+            const diffMinutes = endMinutes - startMinutes;
+            return diffMinutes / 60; // 시간 단위로 반환
+        }
+
         // 일정 포맷팅 함수 (여러 날짜에 걸친 일정을 날짜별로 표시)
         function formatScheduleDisplay(schedule) {
             const taskId = schedule.taskId;
@@ -1377,7 +1394,8 @@
             );
             
             if (relatedAssignments.length === 0) {
-                return `${schedule.startDate} ${schedule.startTime} ~ ${schedule.endTime}`;
+                const hours = calculateHours(schedule.startTime, schedule.endTime);
+                return `${schedule.startDate} ${schedule.startTime} ~ ${schedule.endTime} (${hours}시간)`;
             }
             
             // 각 할당을 날짜별로 그룹화 (실제 할당된 날짜와 시간만 표시)
@@ -1440,10 +1458,11 @@
                 uniqueTimeSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
                 
                 const timeDisplay = uniqueTimeSlots.map(slot => {
+                    const hours = calculateHours(slot.startTime, slot.endTime);
                     if (slot.startTime === '00:00' && slot.endTime === '23:59') {
-                        return '종일';
+                        return `종일 (${hours}시간)`;
                     }
-                    return `${slot.startTime} ~ ${slot.endTime}`;
+                    return `${slot.startTime} ~ ${slot.endTime} (${hours}시간)`;
                 }).join(', ');
                 
                 return `${dateStr} ${timeDisplay}`;
@@ -1474,6 +1493,7 @@
             document.getElementById('detail-task-user').textContent = user.name;
             document.getElementById('detail-task-schedule').innerHTML = formatScheduleDisplay(schedule);
             document.getElementById('detail-task-hours').textContent = `${schedule.assignedHours}시간`;
+            document.getElementById('detail-task-note').textContent = schedule.note || '-';
 
             // 패널 표시
             document.getElementById('detail-panel-overlay').classList.add('show');
@@ -1517,6 +1537,7 @@
             document.getElementById('detail-task-user').textContent = user.name;
             document.getElementById('detail-task-schedule').innerHTML = formatScheduleDisplay(schedule);
             document.getElementById('detail-task-hours').textContent = `${schedule.assignedHours}시간`;
+            document.getElementById('detail-task-note').textContent = schedule.note || '-';
 
             // 오른쪽 리스트에서 해당 일정 찾아서 선택 표시
             const scheduleItems = document.querySelectorAll('.schedule-item');

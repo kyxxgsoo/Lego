@@ -634,19 +634,6 @@
             </div>
         </div>
 
-        <!-- 사용자 정보 -->
-        <div class="panel" style="margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="flex: 1;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #475569;">👤 로그인 사용자</label>
-                    <div style="padding: 10px; background: white; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600;">
-                        <span id="currentUserDisplay">-</span>
-                    </div>
-                </div>
-                <button class="btn" onclick="loadSampleData()" style="margin-top: 24px; display: none;" id="sampleDataBtn">📝 샘플 데이터 로드</button>
-            </div>
-        </div>
-
         <!-- 내 테스크 -->
         <div class="panel">
             <h2>📌 내가 할당받은 테스크</h2>
@@ -768,12 +755,11 @@
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
                 `;
             }
-            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 등록, 프로젝트 관리, 테스크 관리 (팀장 대시보드 제외)
+            // 팀원: 내 캘린더, 전체 캘린더, 프로젝트 관리, 테스크 관리 (팀장 대시보드, 프로젝트 등록 제외)
             else {
                 menuHTML = `
                     <button class="nav-menu-btn ${currentPage === 'my_calendar.html' ? 'active' : ''}" onclick="location.href='my_calendar.html'">내 캘린더</button>
                     <button class="nav-menu-btn ${currentPage === 'entire_calendar.html' ? 'active' : ''}" onclick="location.href='entire_calendar.html'">전체 캘린더</button>
-                    <button class="nav-menu-btn ${currentPage === 'project_register.html' ? 'active' : ''}" onclick="location.href='project_register.html'">프로젝트 등록</button>
                     <button class="nav-menu-btn ${currentPage === 'project_manage.html' ? 'active' : ''}" onclick="location.href='project_manage.html'">프로젝트 관리</button>
                     <button class="nav-menu-btn ${currentPage === 'task_schedule.html' ? 'active' : ''}" onclick="location.href='task_schedule.html'">테스크 관리</button>
                 `;
@@ -789,9 +775,6 @@
         let schedules = [];
         let currentUser = loggedInUser.name; // 로그인한 사용자의 이름
         let currentEditingTask = null;
-
-        // 현재 사용자 표시
-        document.getElementById('currentUserDisplay').textContent = `${loggedInUser.name} (${getRoleName(loggedInUser.role)})`;
 
         function processExcelData(data) {
             console.log('📊 엑셀 데이터:', data);
@@ -1301,13 +1284,6 @@
         
         // 페이지 로드 시 저장된 데이터 복원 및 권한별 UI 설정
         window.onload = function() {
-            // 팀장 권한에 따라 샘플 데이터 버튼 표시/숨김
-            if (isTeamLead) {
-                document.getElementById('sampleDataBtn').style.display = 'inline-block';
-            } else {
-                document.getElementById('sampleDataBtn').style.display = 'none';
-            }
-            
             // 데이터 로드 (projects-data.js 우선, 없으면 localStorage)
             loadDataFromLocalStorage();
             lastDataHash = getDataHash();
