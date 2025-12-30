@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lego - 관리자</title>
+    <script src="users-data.js"></script>
+    <script src="projects-data.js"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
@@ -270,6 +272,297 @@
             font-size: 0.8rem;
             color: #94a3b8;
         }
+
+        /* 랭킹 섹션 */
+        .rankings-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .ranking-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .ranking-card h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ranking-list {
+            list-style: none;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s;
+        }
+
+        .ranking-item:hover {
+            background: #f8fafc;
+        }
+
+        .ranking-item:last-child {
+            border-bottom: none;
+        }
+
+        .rank-number {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .rank-number.gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: white;
+        }
+
+        .rank-number.silver {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            color: white;
+        }
+
+        .rank-number.bronze {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            color: white;
+        }
+
+        .rank-number.default {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+
+        .rank-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rank-name {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+            font-size: 0.95rem;
+        }
+
+        .rank-value {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .rank-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .rank-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .category-badge.planning {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .category-badge.development {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .category-badge.design {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .category-badge.marketing {
+            background: #f3e8ff;
+            color: #6b21a8;
+        }
+
+        .category-badge.operation {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .category-badge.qa {
+            background: #fce7f3;
+            color: #9f1239;
+        }
+
+        .category-badge.finance {
+            background: #cffafe;
+            color: #164e63;
+        }
+
+        .category-badge.hr {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        /* 통합 랭킹 뷰 */
+        .rankings-container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .rankings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .rankings-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .rankings-tabs {
+            display: flex;
+            gap: 8px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .rankings-tab {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .rankings-tab:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .rankings-tab.active {
+            background: white;
+            color: #1e293b;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .rankings-content {
+            display: none;
+        }
+
+        .rankings-content.active {
+            display: block;
+        }
+
+        .project-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .project-selector label {
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .project-selector select {
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        .project-selector select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .category-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .category-selector label {
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .category-selector select {
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        .category-selector select:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .ranking-card-single {
+            width: 100%;
+        }
+
+        .ranking-card-single h3 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -354,6 +647,49 @@
                 <div class="stat-label">전체 작업 시간</div>
                 <div class="stat-value">1,248h</div>
                 <div class="stat-change">↑ 156h 증가</div>
+            </div>
+        </div>
+
+        <!-- 랭킹 섹션 -->
+        <div class="rankings-container">
+            <div class="rankings-header">
+                <h2 class="rankings-title">📊 통계 랭킹</h2>
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <div class="project-selector" id="projectSelector" style="display: none;">
+                        <label>프로젝트:</label>
+                        <select id="projectSelect">
+                            <option value="all">전체 프로젝트</option>
+                        </select>
+                    </div>
+                    <div class="category-selector" id="categorySelector" style="display: none;">
+                        <label>카테고리:</label>
+                        <select id="categorySelect">
+                            <option value="all">전체 카테고리</option>
+                            <option value="planning">기획</option>
+                            <option value="development">개발</option>
+                            <option value="design">디자인</option>
+                            <option value="marketing">마케팅</option>
+                            <option value="operation">운영</option>
+                            <option value="qa">QA/테스트</option>
+                            <option value="finance">재무</option>
+                            <option value="hr">인사</option>
+                        </select>
+                    </div>
+                    <div class="rankings-tabs">
+                        <button class="rankings-tab active" data-tab="category" onclick="switchRankingTab('category')">
+                            🏆 카테고리 랭킹
+                        </button>
+                        <button class="rankings-tab" data-tab="task" onclick="switchRankingTab('task')">
+                            👥 테스크 할당 랭킹
+                        </button>
+                        <button class="rankings-tab" data-tab="hours" onclick="switchRankingTab('hours')">
+                            ⏱️ 시간 랭킹
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="rankingsContent">
+                <!-- 동적으로 생성됨 -->
             </div>
         </div>
 
@@ -475,6 +811,437 @@
                 window.location.href = 'login.html';
             }
         }
+
+        // 데이터 변수
+        let PROJECTS = [];
+        let TASKS = {};
+        let USERS = {};
+        let TASK_ASSIGNMENTS = [];
+        let CATEGORIES = {};
+
+        // 카테고리 매핑
+        function getCategoryFromMajor(대분류) {
+            if (!대분류) return 'planning';
+            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영')) {
+                return 'planning';
+            } else if (대분류.includes('개발') || 대분류.includes('AI')) {
+                return 'development';
+            } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
+                return 'design';
+            } else if (대분류.includes('마케팅')) {
+                return 'marketing';
+            } else if (대분류.includes('운영')) {
+                return 'operation';
+            } else if (대분류.includes('QA') || 대분류.includes('테스트')) {
+                return 'qa';
+            } else if (대분류.includes('재무')) {
+                return 'finance';
+            } else if (대분류.includes('인사')) {
+                return 'hr';
+            }
+            return 'planning';
+        }
+
+        // 카테고리 이름 매핑
+        const categoryNames = {
+            'planning': '기획',
+            'development': '개발',
+            'design': '디자인',
+            'marketing': '마케팅',
+            'operation': '운영',
+            'qa': 'QA/테스트',
+            'finance': '재무',
+            'hr': '인사'
+        };
+
+        // 데이터 로드
+        async function loadData() {
+            // 사용자 데이터
+            if (typeof USERS_DATA !== 'undefined') {
+                USERS = {};
+                USERS_DATA.users.forEach(user => {
+                    USERS[user.id] = { name: user.name, team: user.team };
+                });
+                CATEGORIES = USERS_DATA.categories || {};
+            }
+
+            // 프로젝트 데이터
+            if (typeof PROJECTS_DATA !== 'undefined') {
+                PROJECTS = PROJECTS_DATA.projects || [];
+                TASKS = {};
+                PROJECTS_DATA.tasks.forEach(task => {
+                    TASKS[task.id] = {
+                        taskId: task.id,
+                        title: task.소분류 || task.중분류,
+                        category: getCategoryFromMajor(task.대분류),
+                        projectId: task.projectId,
+                        totalHours: task.기준시간 || 0
+                    };
+                });
+            }
+
+            // 스케줄 데이터 로드
+            await loadSchedulesFromLocalStorage();
+
+            // 프로젝트 선택 옵션 생성
+            const projectSelect = document.getElementById('projectSelect');
+            if (projectSelect) {
+                PROJECTS.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    projectSelect.appendChild(option);
+                });
+                projectSelect.addEventListener('change', onProjectChange);
+            }
+
+            // 카테고리 선택 이벤트 리스너
+            const categorySelect = document.getElementById('categorySelect');
+            if (categorySelect) {
+                categorySelect.addEventListener('change', onCategoryChange);
+            }
+
+            // 초기 탭 설정 (카테고리 랭킹이 기본이므로 프로젝트 선택기 표시)
+            const projectSelector = document.getElementById('projectSelector');
+            const categorySelector = document.getElementById('categorySelector');
+            if (projectSelector && categorySelector) {
+                projectSelector.style.display = 'flex';
+                categorySelector.style.display = 'none';
+            }
+
+            // 랭킹 렌더링
+            renderRankings();
+        }
+
+        // localStorage에서 스케줄 로드
+        async function loadSchedulesFromLocalStorage() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) return;
+
+            try {
+                const data = JSON.parse(saved);
+                const schedules = data.schedules || [];
+
+                // 사용자 매핑
+                const userMapping = {};
+                if (typeof USERS_DATA !== 'undefined') {
+                    USERS_DATA.users.forEach(user => {
+                        userMapping[user.name] = user.id;
+                    });
+                }
+
+                TASK_ASSIGNMENTS = [];
+                schedules.forEach(schedule => {
+                    const task = schedule.task || {};
+                    const userName = schedule.userName || schedule.user;
+                    const userId = userMapping[userName];
+
+                    if (!userId) return;
+
+                    const category = getCategoryFromMajor(task.대분류 || '');
+                    const hours = schedule.assignedHours || 0;
+
+                    TASK_ASSIGNMENTS.push({
+                        taskId: schedule.taskId,
+                        user: userId,
+                        startDate: schedule.startDate,
+                        endDate: schedule.endDate,
+                        assignedHours: hours,
+                        category: category,
+                        projectId: task.projectId || schedule.task?.projectId || 'project-unknown',
+                        task: task
+                    });
+                });
+            } catch (error) {
+                console.error('스케줄 로드 오류:', error);
+            }
+        }
+
+        // 1년간 데이터 필터링
+        function getLastYearData() {
+            const now = new Date();
+            const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+            const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+
+            return TASK_ASSIGNMENTS.filter(assignment => {
+                const startDate = new Date(assignment.startDate);
+                return startDate >= oneYearAgo;
+            });
+        }
+
+        // 현재 선택된 탭
+        let currentTab = 'category';
+        let selectedProjectId = 'all';
+        let selectedCategory = 'all';
+
+        // 탭 전환
+        function switchRankingTab(tab) {
+            currentTab = tab;
+            
+            // 탭 버튼 활성화 상태 변경
+            document.querySelectorAll('.rankings-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.rankings-tab[data-tab="${tab}"]`).classList.add('active');
+            
+            // 필터 선택기 표시/숨김
+            const projectSelector = document.getElementById('projectSelector');
+            const categorySelector = document.getElementById('categorySelector');
+            
+            if (tab === 'category') {
+                // 카테고리 랭킹: 프로젝트 선택만 표시
+                projectSelector.style.display = 'flex';
+                categorySelector.style.display = 'none';
+            } else if (tab === 'task') {
+                // 테스크 할당 랭킹: 카테고리 선택만 표시
+                projectSelector.style.display = 'none';
+                categorySelector.style.display = 'flex';
+            } else if (tab === 'hours') {
+                // 시간 랭킹: 프로젝트 선택 표시
+                projectSelector.style.display = 'flex';
+                categorySelector.style.display = 'none';
+            }
+            
+            // 랭킹 렌더링
+            renderRankings();
+        }
+
+        // 프로젝트 선택 변경
+        function onProjectChange() {
+            selectedProjectId = document.getElementById('projectSelect').value;
+            renderRankings();
+        }
+
+        // 카테고리 선택 변경
+        function onCategoryChange() {
+            selectedCategory = document.getElementById('categorySelect').value;
+            renderRankings();
+        }
+
+        // 1. 프로젝트별 많이 사용된 테스크 카테고리 랭킹 (시간 기준)
+        function getProjectCategoryRanking(projectId = 'all') {
+            const lastYearData = getLastYearData();
+            const categoryData = {};
+
+            lastYearData.forEach(assignment => {
+                // 프로젝트 필터링
+                if (projectId !== 'all') {
+                    const assignmentProjectId = assignment.projectId || 'unknown';
+                    if (assignmentProjectId !== projectId) return;
+                }
+
+                const category = assignment.category || 'planning';
+                const hours = assignment.assignedHours || 0;
+
+                if (!categoryData[category]) {
+                    categoryData[category] = {
+                        count: 0,
+                        hours: 0
+                    };
+                }
+                categoryData[category].count++;
+                categoryData[category].hours += hours;
+            });
+
+            // 랭킹 정렬 (시간 기준)
+            return Object.entries(categoryData)
+                .map(([category, data]) => ({
+                    category,
+                    count: data.count,
+                    hours: data.hours,
+                    name: categoryNames[category] || category
+                }))
+                .sort((a, b) => b.hours - a.hours)
+                .slice(0, 10);
+        }
+
+        // 2. 테스크별 많이 할당된 사람 랭킹 (카테고리 필터링, 할당 시간 기준)
+        function getTaskPersonRanking(category = 'all') {
+            const lastYearData = getLastYearData();
+            const personTaskData = {};
+
+            lastYearData.forEach(assignment => {
+                // 카테고리 필터링
+                if (category !== 'all') {
+                    const assignmentCategory = assignment.category || 'planning';
+                    if (assignmentCategory !== category) return;
+                }
+
+                const userId = assignment.user;
+                const taskId = assignment.taskId;
+                const hours = assignment.assignedHours || 0;
+
+                // 해당 카테고리의 테스크에 할당된 데이터 수집
+                if (!personTaskData[userId]) {
+                    personTaskData[userId] = {
+                        count: 0,
+                        hours: 0,
+                        tasks: new Set()
+                    };
+                }
+                personTaskData[userId].count++;
+                personTaskData[userId].hours += hours;
+                personTaskData[userId].tasks.add(taskId);
+            });
+
+            // 랭킹 정렬 (할당 시간 기준)
+            return Object.entries(personTaskData)
+                .map(([userId, data]) => ({
+                    userId,
+                    count: data.count,
+                    hours: data.hours,
+                    taskCount: data.tasks.size,
+                    name: USERS[userId]?.name || userId
+                }))
+                .sort((a, b) => b.hours - a.hours)
+                .slice(0, 10);
+        }
+
+        // 3. 할당된 시간별 사람 랭킹 (프로젝트 필터링)
+        function getPersonHoursRanking(projectId = 'all') {
+            const lastYearData = getLastYearData();
+            const personHours = {};
+
+            lastYearData.forEach(assignment => {
+                // 프로젝트 필터링
+                if (projectId !== 'all') {
+                    const assignmentProjectId = assignment.projectId || 'unknown';
+                    if (assignmentProjectId !== projectId) return;
+                }
+
+                const userId = assignment.user;
+                const hours = assignment.assignedHours || 0;
+
+                if (!personHours[userId]) {
+                    personHours[userId] = 0;
+                }
+                personHours[userId] += hours;
+            });
+
+            // 랭킹 정렬
+            return Object.entries(personHours)
+                .map(([userId, hours]) => ({
+                    userId,
+                    hours,
+                    name: USERS[userId]?.name || userId
+                }))
+                .sort((a, b) => b.hours - a.hours)
+                .slice(0, 10);
+        }
+
+        // 랭킹 렌더링
+        function renderRankings() {
+            const rankingsContent = document.getElementById('rankingsContent');
+            if (!rankingsContent) return;
+
+            let html = '';
+
+            if (currentTab === 'category') {
+                const categoryRanking = getProjectCategoryRanking(selectedProjectId);
+                const maxHours = Math.max(...categoryRanking.map(r => r.hours), 1);
+                const projectName = selectedProjectId === 'all' 
+                    ? '전체 프로젝트' 
+                    : PROJECTS.find(p => p.id === selectedProjectId)?.name || '전체 프로젝트';
+
+                html = `
+                    <div class="rankings-content active">
+                        <div class="ranking-card-single">
+                            <h3>🏆 프로젝트별 카테고리 랭킹 - ${projectName}</h3>
+                            <ul class="ranking-list">
+                                ${categoryRanking.length > 0 ? categoryRanking.map((item, index) => {
+                                    const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'default';
+                                    const percentage = (item.hours / maxHours) * 100;
+                                    return `
+                                        <li class="ranking-item">
+                                            <div class="rank-number ${rankClass}">${index + 1}</div>
+                                            <div class="rank-content">
+                                                <div class="rank-name">
+                                                    ${item.name}
+                                                    <span class="category-badge ${item.category}">${item.name}</span>
+                                                </div>
+                                                <div class="rank-value">${Math.round(item.hours)}시간 (${item.count}회 사용)</div>
+                                                <div class="rank-bar">
+                                                    <div class="rank-bar-fill" style="width: ${percentage}%"></div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    `;
+                                }).join('') : '<li class="ranking-item"><div class="rank-content">데이터가 없습니다.</div></li>'}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            } else if (currentTab === 'task') {
+                const taskPersonRanking = getTaskPersonRanking(selectedCategory);
+                const maxHours = Math.max(...taskPersonRanking.map(r => r.hours), 1);
+                const categoryName = selectedCategory === 'all' 
+                    ? '전체 카테고리' 
+                    : categoryNames[selectedCategory] || selectedCategory;
+
+                html = `
+                    <div class="rankings-content active">
+                        <div class="ranking-card-single">
+                            <h3>👥 테스크 할당 랭킹 - ${categoryName}</h3>
+                            <ul class="ranking-list">
+                                ${taskPersonRanking.length > 0 ? taskPersonRanking.map((item, index) => {
+                                    const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'default';
+                                    const percentage = (item.hours / maxHours) * 100;
+                                    return `
+                                        <li class="ranking-item">
+                                            <div class="rank-number ${rankClass}">${index + 1}</div>
+                                            <div class="rank-content">
+                                                <div class="rank-name">${item.name}</div>
+                                                <div class="rank-value">${Math.round(item.hours)}시간 (${item.count}회 할당, ${item.taskCount}개 테스크)</div>
+                                                <div class="rank-bar">
+                                                    <div class="rank-bar-fill" style="width: ${percentage}%"></div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    `;
+                                }).join('') : '<li class="ranking-item"><div class="rank-content">데이터가 없습니다.</div></li>'}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            } else if (currentTab === 'hours') {
+                const personHoursRanking = getPersonHoursRanking(selectedProjectId);
+                const maxHours = Math.max(...personHoursRanking.map(r => r.hours), 1);
+                const projectName = selectedProjectId === 'all' 
+                    ? '전체 프로젝트' 
+                    : PROJECTS.find(p => p.id === selectedProjectId)?.name || '전체 프로젝트';
+
+                html = `
+                    <div class="rankings-content active">
+                        <div class="ranking-card-single">
+                            <h3>⏱️ 할당 시간 랭킹 - ${projectName}</h3>
+                            <ul class="ranking-list">
+                                ${personHoursRanking.length > 0 ? personHoursRanking.map((item, index) => {
+                                    const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : 'default';
+                                    const percentage = (item.hours / maxHours) * 100;
+                                    return `
+                                        <li class="ranking-item">
+                                            <div class="rank-number ${rankClass}">${index + 1}</div>
+                                            <div class="rank-content">
+                                                <div class="rank-name">${item.name}</div>
+                                                <div class="rank-value">${Math.round(item.hours)}시간</div>
+                                                <div class="rank-bar">
+                                                    <div class="rank-bar-fill" style="width: ${percentage}%"></div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    `;
+                                }).join('') : '<li class="ranking-item"><div class="rank-content">데이터가 없습니다.</div></li>'}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+
+            rankingsContent.innerHTML = html;
+        }
+
+        // 페이지 로드 시 데이터 로드
+        window.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>
