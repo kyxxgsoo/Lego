@@ -2105,7 +2105,11 @@
                 if (dateCells.length === 0) return;
                 
                 // 전체 테스크를 대상으로 레이어 관리 (날짜별)
-                const dateLayers = {}; // { '2025-12-01': [{ layerIndex: 0, occupiedDates: [1,2,3] }], ... }
+                // 각 날짜별로 어떤 레이어가 사용 중인지 추적
+                const dateLayers = {}; // { '2025-12-01': [0, 1, 2], ... } - 각 날짜별 사용 중인 레이어 인덱스 배열
+                
+                // 먼저 모든 테스크 범위를 날짜별로 그룹화하여 레이어 할당
+                const rangeLayers = []; // 각 테스크 범위에 할당된 레이어 정보
                 
                 taskRanges.forEach(range => {
                     const category = CATEGORIES[range.category];
@@ -2121,7 +2125,70 @@
                             a.isUserScheduled
                         );
                     
-                    // 날짜 범위 내의 각 날짜에 대해 처리
+                    // 이 테스크 범위가 겹치는 날짜들을 확인
+                    const rangeDates = [];
+                    for (let date = range.startDate; date <= range.endDate; date++) {
+                        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                        rangeDates.push(dateStr);
+                        
+                        // 날짜별 레이어 초기화
+                        if (!dateLayers[dateStr]) {
+                            dateLayers[dateStr] = [];
+                        }
+                    }
+                    
+                    // 사용 가능한 레이어 찾기 (이 테스크 범위와 겹치지 않는 레이어)
+                    let layerIndex = -1;
+                    
+                    // 모든 레이어를 확인하여 겹치지 않는 레이어 찾기
+                    for (let i = 0; i <= rangeLayers.length; i++) {
+                        // 이 레이어에 이미 할당된 테스크가 있는지 확인
+                        const hasConflict = rangeLayers.some(existingRange => {
+                            if (existingRange.layerIndex !== i) return false;
+                            
+                            // 날짜 범위가 겹치는지 확인
+                            const existingDates = [];
+                            for (let d = existingRange.startDate; d <= existingRange.endDate; d++) {
+                                existingDates.push(`${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+                            }
+                            
+                            // 겹치는 날짜가 있는지 확인
+                            return rangeDates.some(date => existingDates.includes(date));
+                        });
+                        
+                        if (!hasConflict) {
+                            layerIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (layerIndex === -1) {
+                        // 새 레이어 생성
+                        layerIndex = rangeLayers.length;
+                    }
+                    
+                    // 레이어 정보 저장
+                    rangeLayers.push({
+                        range: range,
+                        layerIndex: layerIndex,
+                        startDate: range.startDate,
+                        endDate: range.endDate,
+                        category: category,
+                        user: user,
+                        isScheduled: isScheduled
+                    });
+                    
+                    // 각 날짜에 레이어 인덱스 기록
+                    rangeDates.forEach(dateStr => {
+                        if (!dateLayers[dateStr].includes(layerIndex)) {
+                            dateLayers[dateStr].push(layerIndex);
+                        }
+                    });
+                });
+                
+                // 레이어 정보를 바탕으로 테스크 바 생성
+                rangeLayers.forEach(({ range, layerIndex, category, user, isScheduled }) => {
+                    // 날짜 범위 내의 각 날짜에 대해 테스크 바 생성
                     for (let date = range.startDate; date <= range.endDate; date++) {
                         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
                         const dateCell = gridElement.querySelector(`.cell[data-date="${dateStr}"]`);
@@ -2129,29 +2196,6 @@
                         
                         const taskBarsContainer = dateCell.querySelector('.task-bars-container');
                         if (!taskBarsContainer) continue;
-                        
-                        // 해당 날짜의 레이어 관리
-                        if (!dateLayers[dateStr]) {
-                            dateLayers[dateStr] = [];
-                        }
-                        
-                        // 사용 가능한 레이어 찾기 (같은 taskId가 아닌 레이어)
-                        let layerIndex = -1;
-                        for (let i = 0; i < dateLayers[dateStr].length; i++) {
-                            if (dateLayers[dateStr][i].taskId !== range.taskId) {
-                                layerIndex = i;
-                                break;
-                            }
-                        }
-                        
-                        if (layerIndex === -1) {
-                            // 새 레이어 생성
-                            layerIndex = dateLayers[dateStr].length;
-                            dateLayers[dateStr].push({
-                                taskId: range.taskId,
-                                layerIndex: layerIndex
-                            });
-                        }
                         
                         const barSpan = range.endDate - range.startDate + 1;
                         
@@ -2164,7 +2208,7 @@
                         taskBar.style.pointerEvents = 'auto'; // 부모의 pointer-events: none을 무시
                         taskBar.style.cursor = 'pointer'; // 커서 변경
                         
-                        // 셀 내부 상대 위치 설정 (적응형)
+                        // 셀 내부 상대 위치 설정 (적응형) - 레이어 인덱스에 따라 세로로 배치
                         taskBar.style.position = 'absolute';
                         taskBar.style.top = `${layerIndex * 24}px`;
                         taskBar.style.left = '2px';
@@ -2474,11 +2518,172 @@
             });
         }
         
+        // ============================================
+        // 🎯 샘플 일정 생성 함수 (projects-data.js 기반 자동 생성)
+        // ============================================
+        function createSampleSchedulesForEntireCalendar() {
+            // PROJECTS_DATA가 로드되지 않았으면 대기
+            if (typeof PROJECTS_DATA === 'undefined' || !PROJECTS_DATA.tasks) {
+                console.warn('⚠️ PROJECTS_DATA가 아직 로드되지 않았습니다.');
+                return;
+            }
+            
+            const baseDate = new Date('2025-12-01');
+            const schedules = [];
+            
+            // 사용자 매핑 (이름 -> user ID)
+            const userMapping = {};
+            if (typeof USERS_DATA !== 'undefined') {
+                USERS_DATA.users.forEach(user => {
+                    userMapping[user.name] = user.id;
+                });
+            }
+            
+            // 기존 일정 로드 (중복 방지용)
+            const existing = localStorage.getItem('projectSchedules');
+            const existingSchedules = new Set();
+            if (existing) {
+                try {
+                    const data = JSON.parse(existing);
+                    if (data.schedules && Array.isArray(data.schedules)) {
+                        data.schedules.forEach(s => {
+                            // taskId + userName + startDate + startTime으로 고유 키 생성
+                            const key = `${s.taskId}-${s.userName || s.user}-${s.startDate}-${s.startTime}`;
+                            existingSchedules.add(key);
+                        });
+                        console.log(`📋 기존 일정 ${data.schedules.length}개 발견, 중복 체크 진행`);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 기존 일정 파싱 오류:', e);
+                }
+            }
+            
+            // PROJECTS_DATA의 모든 테스크 중 할당시간이 있는 것만 필터링
+            const tasksWithAssignment = PROJECTS_DATA.tasks.filter(task => 
+                task.할당시간 && task.할당시간 > 0 && task.이름 && task.이름.trim() !== ''
+            );
+            
+            console.log(`📋 할당된 테스크 발견: ${tasksWithAssignment.length}개`);
+            
+            let dateOffset = 0;
+            let newScheduleCount = 0;
+            
+            tasksWithAssignment.forEach((task, index) => {
+                const userName = task.이름;
+                const userId = userMapping[userName];
+                
+                if (!userId) {
+                    console.warn(`⚠️ 사용자를 찾을 수 없습니다: ${userName} (테스크: ${task.id})`);
+                    return;
+                }
+                
+                const assignedHours = task.할당시간;
+                const standardHours = task.기준시간 || assignedHours;
+                
+                // 일수 계산 (하루 최대 8시간 기준)
+                const days = Math.max(1, Math.ceil(assignedHours / 8));
+                const hoursPerDay = Math.ceil(assignedHours / days);
+                
+                // 날짜 분산 (다양한 날짜에 배치)
+                const startDate = new Date(baseDate);
+                startDate.setDate(baseDate.getDate() + dateOffset);
+                
+                let remainingHours = assignedHours;
+                let dayCount = 0;
+                
+                for (let day = 0; day < days && remainingHours > 0; day++) {
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + day);
+                    
+                    // 주말 제외
+                    const dayOfWeek = currentDate.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        continue;
+                    }
+                    
+                    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+                    
+                    // 시간 계산 (09:00부터 시작, 최대 18:00까지)
+                    const dayHours = Math.min(hoursPerDay, remainingHours, 8);
+                    const startHour = 9;
+                    const endHour = Math.min(startHour + dayHours, 18);
+                    const startTime = `${String(startHour).padStart(2, '0')}:00`;
+                    const endTime = `${String(endHour).padStart(2, '0')}:00`;
+                    
+                    // 중복 체크
+                    const scheduleKey = `${task.id}-${userName}-${dateStr}-${startTime}`;
+                    if (existingSchedules.has(scheduleKey)) {
+                        console.log(`⏭️ 중복 일정 스킵: ${scheduleKey}`);
+                        continue;
+                    }
+                    
+                    schedules.push({
+                        taskId: task.id,
+                        userName: userName,
+                        user: userId,
+                        startDate: dateStr,
+                        endDate: dateStr,
+                        startTime: startTime,
+                        endTime: endTime,
+                        assignedHours: dayHours,
+                        task: {
+                            소분류: task.소분류 || task.중분류 || '테스크',
+                            중분류: task.중분류 || '작업',
+                            대분류: task.대분류 || '기획관리',
+                            할당시간: dayHours,
+                            기준시간: standardHours,
+                            비고: task.비고 || '',
+                            projectId: task.projectId || 'project-unknown',
+                            사업명: task.사업명 || '프로젝트'
+                        }
+                    });
+                    
+                    existingSchedules.add(scheduleKey);
+                    newScheduleCount++;
+                    remainingHours -= dayHours;
+                    dayCount++;
+                }
+                
+                // 다음 테스크는 1일 후부터 시작 (겹치지 않도록)
+                dateOffset += dayCount + 1;
+            });
+            
+            // 기존 일정과 새 일정 병합
+            let allSchedules = [];
+            if (existing) {
+                try {
+                    const data = JSON.parse(existing);
+                    if (data.schedules && Array.isArray(data.schedules)) {
+                        allSchedules = data.schedules;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 기존 일정 병합 오류:', e);
+                }
+            }
+            
+            // 새 일정 추가
+            allSchedules = allSchedules.concat(schedules);
+            
+            // localStorage에 저장
+            const scheduleData = {
+                schedules: allSchedules,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            localStorage.setItem('projectSchedules', JSON.stringify(scheduleData));
+            console.log(`✅ 샘플 일정 생성 완료: 새 일정 ${newScheduleCount}개 추가 (전체 ${allSchedules.length}개)`);
+        }
+        
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('📅 캘린더 초기화 중...');
             
             // 1. 데이터 로드 (사전에 등록된 유저와 일정 데이터)
             await loadMockData();
+            
+            // 2. 샘플 일정 생성 (기존 일정이 없는 경우, PROJECTS_DATA 로드 후)
+            createSampleSchedulesForEntireCalendar();
+            
+            // 3. 생성된 일정 로드
             await loadSchedulesFromLocalStorage();
             dataLoaded = true;
             console.log('📊 전체 스케줄:', TASK_ASSIGNMENTS.length, '개');
