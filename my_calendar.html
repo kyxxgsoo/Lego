@@ -27,7 +27,8 @@
             background-color: var(--bg-gray);
             margin: 0; padding: 0;
             color: var(--text-dark);
-            height: 100vh; display: flex; flex-direction: column;
+            min-height: 100vh; display: flex; flex-direction: column;
+            overflow-y: auto;
         }
 
         /* --- Header Navigation --- */
@@ -111,7 +112,6 @@
         .main-content {
             flex: 1;
             padding: 25px;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
             gap: 15px;
@@ -155,7 +155,7 @@
             flex: 1;
             display: flex;
             gap: 15px;
-            overflow: hidden;
+            min-height: 0;
         }
 
         .calendar-section {
@@ -190,7 +190,28 @@
         .schedule-list-content {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 15px;
+            min-height: 0;
+            max-height: 100%;
+        }
+        
+        .schedule-list-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .schedule-list-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        .schedule-list-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .schedule-list-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
 
         .schedule-item {
@@ -213,6 +234,12 @@
         .schedule-item.selected {
             background: #eff6ff;
             border-color: var(--primary-blue);
+        }
+
+        .schedule-item.highlighted {
+            background: #eff6ff !important;
+            border-color: var(--primary-blue) !important;
+            border-width: 2px !important;
         }
 
         .schedule-number {
@@ -262,17 +289,73 @@
         }
 
         /* --- Detail Panel --- */
-        .detail-panel {
-            background: white;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            padding: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        .detail-panel-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100003;
             display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .detail-panel-overlay.show {
+            display: block;
+            opacity: 1;
+        }
+        
+        .detail-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            padding: 25px;
+            padding-top: 50px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+            z-index: 100004;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            display: block;
         }
 
         .detail-panel.show {
-            display: block;
+            transform: translateY(0);
+        }
+        
+        .detail-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .detail-panel::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        .detail-panel::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        .detail-panel::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .detail-project-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .detail-section {
@@ -315,21 +398,32 @@
             flex: 1;
             font-size: 0.85rem;
             color: var(--text-dark);
+            line-height: 1.6;
+            white-space: normal;
         }
 
         .close-detail-btn {
-            float: right;
-            background: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f1f5f9;
             border: none;
             font-size: 1.5rem;
             cursor: pointer;
-            color: #94a3b8;
+            color: #64748b;
             line-height: 1;
-            padding: 0;
-            margin-top: -5px;
+            padding: 4px 10px;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
         }
 
         .close-detail-btn:hover {
+            background: #e2e8f0;
             color: var(--text-dark);
         }
 
@@ -390,10 +484,10 @@
         }
 
         .view-switch button.active {
-            background: white;
+            background: #e2e8f0;
             color: var(--text-dark);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            font-weight: 600;
+            box-shadow: none;
+            font-weight: 500;
         }
 
         .legend-wrapper {
@@ -779,9 +873,13 @@
             </div>
         </div>
 
+        <!-- 상세정보 패널 오버레이 -->
+        <div class="detail-panel-overlay" id="detail-panel-overlay" onclick="closeDetailPanel()"></div>
+        
         <!-- 상세정보 패널 -->
-        <div class="detail-panel" id="detail-panel">
+        <div class="detail-panel" id="detail-panel" onclick="event.stopPropagation()">
             <button class="close-detail-btn" onclick="closeDetailPanel()">×</button>
+            <div class="detail-project-title" id="detail-project-title">-</div>
             <div class="detail-section">
                 <div class="detail-section-title">📌 테스크 정보</div>
                 <div class="detail-row">
@@ -803,25 +901,6 @@
                 <div class="detail-row">
                     <div class="detail-label">할당 시간</div>
                     <div class="detail-value" id="detail-task-hours">-</div>
-                </div>
-            </div>
-            <div class="detail-section">
-                <div class="detail-section-title">📂 프로젝트 정보</div>
-                <div class="detail-row">
-                    <div class="detail-label">프로젝트명</div>
-                    <div class="detail-value" id="detail-project-name">-</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">기준 시간</div>
-                    <div class="detail-value" id="detail-project-standard">-</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">할당 시간</div>
-                    <div class="detail-value" id="detail-project-assigned">-</div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">진행률</div>
-                    <div class="detail-value" id="detail-project-progress">-</div>
                 </div>
             </div>
         </div>
@@ -966,6 +1045,7 @@
         // localStorage에서 스케줄 데이터 로드
         let TASK_ASSIGNMENTS = [];
         let filteredAssignments = [];
+        let lastScheduleDataHash = null; // 이전 데이터 해시 저장
         
         function getSchedulesForDate(dateStr) {
             const schedules = [];
@@ -1002,6 +1082,16 @@
             if (!saved) {
                 return;
             }
+            
+            // 데이터 해시 계산 (간단한 문자열 길이와 내용 기반)
+            const currentHash = saved.length + saved.substring(0, 100);
+            
+            // 데이터가 변경되지 않았으면 뷰 재생성하지 않음
+            if (lastScheduleDataHash === currentHash) {
+                return;
+            }
+            
+            lastScheduleDataHash = currentHash;
             
             let data;
             try {
@@ -1092,6 +1182,18 @@
             }
         }
         
+        // 현재 표시 중인 날짜 (오늘로 설정) - loadSchedulesFromLocalStorage 호출 전에 선언 필요
+        const today = new Date();
+        let currentYear = today.getFullYear();
+        let currentMonth = today.getMonth() + 1;
+        // 이번 주 월요일 계산
+        const dayOfWeek = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        let currentWeekStart = monday;
+        let currentDayDate = new Date(today);
+        let selectedSchedule = null;
+
         // 초기 로드
         loadSchedulesFromLocalStorage();
         
@@ -1102,10 +1204,10 @@
             }
         });
         
-        // 주기적으로 체크 (같은 탭에서도 업데이트)
+        // 주기적으로 체크 (같은 탭에서도 업데이트) - 데이터 변경 시에만 업데이트
         setInterval(function() {
             loadSchedulesFromLocalStorage();
-        }, 3000);
+        }, 10000); // 3초에서 10초로 변경하여 깜빡임 감소
 
         // 필터 적용
         function applyFilters() {
@@ -1145,18 +1247,6 @@
 
             updateScheduleList();
         }
-
-        // 현재 표시 중인 날짜 (오늘로 설정)
-        const today = new Date();
-        let currentYear = today.getFullYear();
-        let currentMonth = today.getMonth() + 1;
-        // 이번 주 월요일 계산
-        const dayOfWeek = today.getDay();
-        const monday = new Date(today);
-        monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-        let currentWeekStart = monday;
-        let currentDayDate = new Date(today);
-        let selectedSchedule = null;
 
         // 뷰 전환
         function changeView(btn) {
@@ -1250,7 +1340,19 @@
                 
                 const scheduleItem = document.createElement('div');
                 scheduleItem.className = 'schedule-item';
+                scheduleItem.setAttribute('data-task-id', schedule.taskId);
+                scheduleItem.setAttribute('data-user', schedule.user);
+                scheduleItem.setAttribute('data-schedule', JSON.stringify(schedule));
                 scheduleItem.onclick = () => showScheduleDetail(schedule);
+
+                // 호버 시 동일한 테스크 하이라이트
+                scheduleItem.addEventListener('mouseenter', () => {
+                    highlightRelatedTasks(schedule);
+                });
+
+                scheduleItem.addEventListener('mouseleave', () => {
+                    unhighlightRelatedTasks(schedule);
+                });
 
                 scheduleItem.innerHTML = `
                     <div class="schedule-number ${category.color}">${index + 1}</div>
@@ -1262,6 +1364,92 @@
 
                 listContainer.appendChild(scheduleItem);
             });
+        }
+
+        // 일정 포맷팅 함수 (여러 날짜에 걸친 일정을 날짜별로 표시)
+        function formatScheduleDisplay(schedule) {
+            const taskId = schedule.taskId;
+            const user = schedule.user;
+            
+            // 동일한 테스크와 사용자의 모든 할당 찾기
+            const relatedAssignments = filteredAssignments.filter(assignment => 
+                assignment.taskId === taskId && assignment.user === user
+            );
+            
+            if (relatedAssignments.length === 0) {
+                return `${schedule.startDate} ${schedule.startTime} ~ ${schedule.endTime}`;
+            }
+            
+            // 각 할당을 날짜별로 그룹화 (실제 할당된 날짜와 시간만 표시)
+            const dateGroups = {};
+            relatedAssignments.forEach(assignment => {
+                const startDateStr = assignment.startDate;
+                const endDateStr = assignment.endDate;
+                
+                if (startDateStr === endDateStr) {
+                    // 같은 날짜 - 해당 날짜에 시간 표시
+                    if (!dateGroups[startDateStr]) {
+                        dateGroups[startDateStr] = [];
+                    }
+                    dateGroups[startDateStr].push({
+                        startTime: assignment.startTime,
+                        endTime: assignment.endTime
+                    });
+                } else {
+                    // 여러 날에 걸친 할당 - 시작일과 종료일만 표시
+                    // 시작일
+                    if (!dateGroups[startDateStr]) {
+                        dateGroups[startDateStr] = [];
+                    }
+                    dateGroups[startDateStr].push({
+                        startTime: assignment.startTime,
+                        endTime: '23:59'
+                    });
+                    
+                    // 종료일
+                    if (!dateGroups[endDateStr]) {
+                        dateGroups[endDateStr] = [];
+                    }
+                    dateGroups[endDateStr].push({
+                        startTime: '00:00',
+                        endTime: assignment.endTime
+                    });
+                    
+                    // 중간 날짜는 다른 할당이 있을 수 있으므로 표시하지 않음
+                    // (실제로 중간 날짜에 할당이 있으면 별도의 assignment로 존재함)
+                }
+            });
+            
+            // 날짜순으로 정렬하여 표시
+            const sortedDates = Object.keys(dateGroups).sort();
+            const scheduleLines = sortedDates.map(dateStr => {
+                const timeSlots = dateGroups[dateStr];
+                // 같은 날짜에 여러 시간대가 있으면 모두 표시
+                // 중복 제거 및 정렬
+                const uniqueTimeSlots = [];
+                timeSlots.forEach(slot => {
+                    const exists = uniqueTimeSlots.some(existing => 
+                        existing.startTime === slot.startTime && existing.endTime === slot.endTime
+                    );
+                    if (!exists) {
+                        uniqueTimeSlots.push(slot);
+                    }
+                });
+                
+                // 시간대 정렬
+                uniqueTimeSlots.sort((a, b) => a.startTime.localeCompare(b.startTime));
+                
+                const timeDisplay = uniqueTimeSlots.map(slot => {
+                    if (slot.startTime === '00:00' && slot.endTime === '23:59') {
+                        return '종일';
+                    }
+                    return `${slot.startTime} ~ ${slot.endTime}`;
+                }).join(', ');
+                
+                return `${dateStr} ${timeDisplay}`;
+            });
+            
+            return scheduleLines.join('<br>');
         }
 
         // 일정 리스트에서 클릭 시 상세정보 표시
@@ -1277,22 +1465,24 @@
             const user = USERS[schedule.user];
             const project = PROJECTS[schedule.projectId];
 
+            // 프로젝트 타이틀
+            document.getElementById('detail-project-title').textContent = project.name;
+
             // 테스크 정보
             document.getElementById('detail-task-title').textContent = schedule.title;
             document.getElementById('detail-task-category').textContent = category.name;
             document.getElementById('detail-task-user').textContent = user.name;
-            document.getElementById('detail-task-schedule').textContent = `${schedule.startDate} ~ ${schedule.endDate}`;
+            document.getElementById('detail-task-schedule').innerHTML = formatScheduleDisplay(schedule);
             document.getElementById('detail-task-hours').textContent = `${schedule.assignedHours}시간`;
 
-            // 프로젝트 정보
-            document.getElementById('detail-project-name').textContent = project.name;
-            document.getElementById('detail-project-standard').textContent = `${project.standardHours}시간`;
-            document.getElementById('detail-project-assigned').textContent = `${project.assignedHours}시간`;
-            const progress = Math.round((project.assignedHours / project.standardHours) * 100);
-            document.getElementById('detail-project-progress').textContent = `${progress}%`;
-
             // 패널 표시
+            document.getElementById('detail-panel-overlay').classList.add('show');
             document.getElementById('detail-panel').classList.add('show');
+            
+            // 모든 task와 task-bar의 z-index를 패널보다 낮게 설정
+            document.querySelectorAll('.task, .month-task-bar').forEach(el => {
+                el.style.zIndex = '1';
+            });
         }
 
         // 캘린더에서 클릭 시 상세정보 표시 (오른쪽 리스트와 연동)
@@ -1318,19 +1508,15 @@
                 return;
             }
 
+            // 프로젝트 타이틀
+            document.getElementById('detail-project-title').textContent = project.name;
+
             // 테스크 정보
             document.getElementById('detail-task-title').textContent = task.title;
             document.getElementById('detail-task-category').textContent = category.name;
             document.getElementById('detail-task-user').textContent = user.name;
-            document.getElementById('detail-task-schedule').textContent = `${schedule.startDate} ~ ${schedule.endDate}`;
+            document.getElementById('detail-task-schedule').innerHTML = formatScheduleDisplay(schedule);
             document.getElementById('detail-task-hours').textContent = `${schedule.assignedHours}시간`;
-
-            // 프로젝트 정보
-            document.getElementById('detail-project-name').textContent = project.name;
-            document.getElementById('detail-project-standard').textContent = `${project.standardHours}시간`;
-            document.getElementById('detail-project-assigned').textContent = `${project.assignedHours}시간`;
-            const progress = Math.round((project.assignedHours / project.standardHours) * 100);
-            document.getElementById('detail-project-progress').textContent = `${progress}%`;
 
             // 오른쪽 리스트에서 해당 일정 찾아서 선택 표시
             const scheduleItems = document.querySelectorAll('.schedule-item');
@@ -1374,15 +1560,32 @@
 
             // 패널 표시
             console.log('패널 표시 중...');
+            document.getElementById('detail-panel-overlay').classList.add('show');
             const detailPanel = document.getElementById('detail-panel');
             detailPanel.classList.add('show');
             console.log('패널 클래스:', detailPanel.className);
+            
+            // 모든 task와 task-bar의 z-index를 패널보다 낮게 설정
+            document.querySelectorAll('.task, .month-task-bar').forEach(el => {
+                el.style.zIndex = '1';
+            });
         }
 
         function closeDetailPanel() {
+            document.getElementById('detail-panel-overlay').classList.remove('show');
             document.getElementById('detail-panel').classList.remove('show');
             document.querySelectorAll('.schedule-item').forEach(item => item.classList.remove('selected'));
             selectedSchedule = null;
+            
+            // task의 z-index 복원 (하이라이트된 것만)
+            document.querySelectorAll('.task').forEach(task => {
+                if (task.style.outline && task.style.outline.includes('var(--primary-blue)')) {
+                    // 하이라이트된 task는 유지하되 패널이 닫혔으므로 z-index를 높일 수 있음
+                    task.style.zIndex = '10001';
+                } else {
+                    task.style.zIndex = '1';
+                }
+            });
         }
 
         // 네비게이션
@@ -1588,17 +1791,13 @@
                         });
 
                         taskBar.addEventListener('mouseenter', (e) => {
-                            const taskId = e.currentTarget.getAttribute('data-task-id');
-                            document.querySelectorAll(`.month-task-bar[data-task-id="${taskId}"]`).forEach(bar => {
-                                bar.classList.add('same-task-highlight');
-                            });
+                            const assignmentData = JSON.parse(e.currentTarget.getAttribute('data-assignment'));
+                            highlightRelatedTasks(assignmentData);
                         });
 
                         taskBar.addEventListener('mouseleave', (e) => {
-                            const taskId = e.currentTarget.getAttribute('data-task-id');
-                            document.querySelectorAll(`.month-task-bar[data-task-id="${taskId}"]`).forEach(bar => {
-                                bar.classList.remove('same-task-highlight');
-                            });
+                            const assignmentData = JSON.parse(e.currentTarget.getAttribute('data-assignment'));
+                            unhighlightRelatedTasks(assignmentData);
                         });
 
                         monthGrid.appendChild(taskBar);
@@ -1771,6 +1970,17 @@
                             showScheduleDetailFromCalendar(scheduleData);
                         });
 
+                        // 호버 시 동일한 테스크 하이라이트
+                        task.addEventListener('mouseenter', (e) => {
+                            const scheduleData = JSON.parse(e.currentTarget.getAttribute('data-schedule'));
+                            highlightRelatedTasks(scheduleData);
+                        });
+
+                        task.addEventListener('mouseleave', (e) => {
+                            const scheduleData = JSON.parse(e.currentTarget.getAttribute('data-schedule'));
+                            unhighlightRelatedTasks(scheduleData);
+                        });
+
                         cell.appendChild(task);
                     });
 
@@ -1895,6 +2105,17 @@
                         showScheduleDetailFromCalendar(scheduleData);
                     });
 
+                    // 호버 시 동일한 테스크 하이라이트
+                    task.addEventListener('mouseenter', (e) => {
+                        const scheduleData = JSON.parse(e.currentTarget.getAttribute('data-schedule'));
+                        highlightRelatedTasks(scheduleData);
+                    });
+
+                    task.addEventListener('mouseleave', (e) => {
+                        const scheduleData = JSON.parse(e.currentTarget.getAttribute('data-schedule'));
+                        unhighlightRelatedTasks(scheduleData);
+                    });
+
                     cell.appendChild(task);
                 });
 
@@ -1932,7 +2153,9 @@
                     const scheduleId = e.currentTarget.getAttribute('data-schedule-id');
                     const taskBlock = document.querySelector(`.task[data-schedule-id="${scheduleId}"]`);
                     if (taskBlock) {
-                        taskBlock.style.zIndex = '10000';
+                        // 패널이 열려있으면 z-index를 높이지 않음
+                        const isPanelOpen = document.getElementById('detail-panel').classList.contains('show');
+                        taskBlock.style.zIndex = isPanelOpen ? '1' : '10000';
                         const tooltip = taskBlock.querySelector('.task-detail-tooltip');
                         if (tooltip) {
                             tooltip.classList.add('force-show');
@@ -1951,6 +2174,102 @@
                         }
                     }
                 };
+            });
+        }
+
+        // 동일한 테스크 하이라이트 함수
+        function highlightRelatedTasks(schedule) {
+            const taskId = schedule.taskId;
+            const user = schedule.user;
+            const isPanelOpen = document.getElementById('detail-panel').classList.contains('show');
+
+            // 월별 뷰의 task bar 하이라이트
+            document.querySelectorAll(`.month-task-bar[data-task-id="${taskId}"]`).forEach(bar => {
+                const assignmentData = JSON.parse(bar.getAttribute('data-assignment'));
+                if (assignmentData.user === user) {
+                    bar.classList.add('same-task-highlight');
+                    // 패널이 열려있으면 z-index를 낮게 유지
+                    if (isPanelOpen) {
+                        bar.style.zIndex = '1';
+                    }
+                }
+            });
+
+            // 주별/일별 뷰의 task 하이라이트
+            const maxZIndex = isPanelOpen ? '1' : '10001'; // 패널이 열려있으면 z-index를 높이지 않음
+            
+            document.querySelectorAll('.task').forEach(task => {
+                const scheduleAttr = task.getAttribute('data-schedule');
+                if (scheduleAttr) {
+                    try {
+                        const scheduleData = JSON.parse(scheduleAttr);
+                        if (scheduleData.taskId === taskId && scheduleData.user === user) {
+                            task.style.outline = '3px solid var(--primary-blue)';
+                            task.style.boxShadow = '0 0 15px rgba(37, 99, 235, 0.5)';
+                            task.style.zIndex = maxZIndex;
+                        }
+                    } catch (e) {
+                        console.error('스케줄 데이터 파싱 오류:', e);
+                    }
+                }
+            });
+
+            // 오른쪽 리스트의 schedule-item 하이라이트
+            document.querySelectorAll('.schedule-item').forEach(item => {
+                const scheduleAttr = item.getAttribute('data-schedule');
+                if (scheduleAttr) {
+                    try {
+                        const itemSchedule = JSON.parse(scheduleAttr);
+                        if (itemSchedule.taskId === taskId && itemSchedule.user === user) {
+                            item.classList.add('highlighted');
+                        }
+                    } catch (e) {
+                        console.error('스케줄 데이터 파싱 오류:', e);
+                    }
+                }
+            });
+        }
+
+        // 하이라이트 제거 함수
+        function unhighlightRelatedTasks(schedule) {
+            const taskId = schedule.taskId;
+            const user = schedule.user;
+
+            // 월별 뷰의 task bar 하이라이트 제거
+            document.querySelectorAll(`.month-task-bar[data-task-id="${taskId}"]`).forEach(bar => {
+                bar.classList.remove('same-task-highlight');
+            });
+
+            // 주별/일별 뷰의 task 하이라이트 제거
+            document.querySelectorAll('.task').forEach(task => {
+                const scheduleAttr = task.getAttribute('data-schedule');
+                if (scheduleAttr) {
+                    try {
+                        const scheduleData = JSON.parse(scheduleAttr);
+                        if (scheduleData.taskId === taskId && scheduleData.user === user) {
+                            task.style.outline = '';
+                            task.style.boxShadow = '';
+                            task.style.zIndex = '';
+                        }
+                    } catch (e) {
+                        console.error('스케줄 데이터 파싱 오류:', e);
+                    }
+                }
+            });
+
+            // 오른쪽 리스트의 schedule-item 하이라이트 제거
+            document.querySelectorAll('.schedule-item').forEach(item => {
+                const scheduleAttr = item.getAttribute('data-schedule');
+                if (scheduleAttr) {
+                    try {
+                        const itemSchedule = JSON.parse(scheduleAttr);
+                        if (itemSchedule.taskId === taskId && itemSchedule.user === user) {
+                            item.classList.remove('highlighted');
+                        }
+                    } catch (e) {
+                        console.error('스케줄 데이터 파싱 오류:', e);
+                    }
+                }
             });
         }
 
