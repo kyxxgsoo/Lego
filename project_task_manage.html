@@ -550,8 +550,16 @@
             `;
         }
 
-        let projectData = [];
+        // 통합 데이터 구조
+        let projects = [];
+        let tasks = [];
         let schedules = [];
+        // 하위 호환성을 위한 변수
+        // 통합 데이터 구조
+        let projects = [];
+        let tasks = [];
+        // 하위 호환성을 위한 변수
+        let projectData = [];
         let currentFilter = 'member'; // 'member' or 'task'
         let selectedProject = null; // URL 파라미터로 전달된 프로젝트 이름
 
@@ -1163,7 +1171,7 @@
         }
 
         // 페이지 로드 시
-        window.onload = function() {
+        window.onload = async function() {
             // URL 파라미터에서 프로젝트 이름 확인
             selectedProject = getUrlParameter('project');
             
@@ -1176,12 +1184,40 @@
             // 프로젝트 헤더 표시
             document.getElementById('projectNameDisplay').textContent = selectedProject;
             
-            // localStorage에서 데이터 로드
-            const saved = localStorage.getItem('projectSchedules');
-            if (saved) {
-                const data = JSON.parse(saved);
-                let allProjectData = data.projectData || [];
+            // JSON 파일에서 데이터 로드
+            async function loadFromJSON() {
+                try {
+                    const response = await fetch('data.json');
+                    if (!response.ok) {
+                        console.log('data.json 파일을 찾을 수 없습니다. localStorage에서 로드합니다.');
+                        return null;
+                    }
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('JSON 파일 로드 오류:', error);
+                    return null;
+                }
+            }
+            
+            // 데이터 로드 (JSON 파일 우선, 없으면 localStorage)
+            const jsonData = await loadFromJSON();
+            let data = jsonData;
+            
+            if (!data) {
+                const saved = localStorage.getItem('projectSchedules');
+                if (saved) {
+                    data = JSON.parse(saved);
+                }
+            }
+            
+            if (data) {
+                // 통합 데이터 구조 로드
+                const projectsData = data.projects || [];
+                const tasksData = data.tasks || [];
                 schedules = data.schedules || [];
+                // 하위 호환성: projectData가 없으면 tasks에서 생성
+                let allProjectData = data.projectData || tasksData || [];
                 
                 // 프로젝트 필터링
                 projectData = filterProjectData(allProjectData, selectedProject);
@@ -1201,33 +1237,50 @@
             }
             
             // localStorage 변경 감지
-            window.addEventListener('storage', function(e) {
+            window.addEventListener('storage', async function(e) {
                 if (e.key === 'projectSchedules') {
-                    const saved = localStorage.getItem('projectSchedules');
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        let allProjectData = data.projectData || [];
-                        schedules = data.schedules || [];
-                        projectData = filterProjectData(allProjectData, selectedProject);
-                        
-                        renderTaskBlocks();
-                        renderTeamList();
-                    }
+                    await reloadData();
                 }
             });
             
-            // 주기적으로 체크 (같은 탭에서도 업데이트)
-            setInterval(function() {
-                const saved = localStorage.getItem('projectSchedules');
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    if (data.schedules && JSON.stringify(schedules) !== JSON.stringify(data.schedules)) {
-                        schedules = data.schedules;
-                        renderTaskBlocks();
-                        renderTeamList();
+            // 주기적으로 체크 (같은 탭에서도 업데이트) - JSON 파일 우선
+            setInterval(async function() {
+                await reloadData();
+            }, 3000);
+            
+            // 데이터 재로드 함수
+            async function reloadData() {
+                async function loadFromJSON() {
+                    try {
+                        const response = await fetch('data.json');
+                        if (!response.ok) return null;
+                        return await response.json();
+                    } catch (error) {
+                        return null;
                     }
                 }
-            }, 2000);
+                
+                const jsonData = await loadFromJSON();
+                let data = jsonData;
+                
+                if (!data) {
+                    const saved = localStorage.getItem('projectSchedules');
+                    if (saved) {
+                        data = JSON.parse(saved);
+                    }
+                }
+                
+                if (data) {
+                    const tasksData = data.tasks || [];
+                    const newSchedules = data.schedules || [];
+                    let allProjectData = data.projectData || tasksData || [];
+                    
+                    schedules = newSchedules;
+                    projectData = filterProjectData(allProjectData, selectedProject);
+                    renderTaskBlocks();
+                    renderTeamList();
+                }
+            }
         };
     </script>
 </body>

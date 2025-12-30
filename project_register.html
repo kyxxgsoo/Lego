@@ -510,6 +510,22 @@
                 <strong>필수 컬럼:</strong> 소속, 이름, 대분류, 중분류, 소분류, 할당시간<br>
                 <span style="font-size: 0.8rem; color: #64748b;">※ 기준시간은 소분류별 할당시간의 합으로 자동 계산됩니다</span>
             </p>
+            
+            <!-- localStorage 관리 버튼 -->
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <h3 style="font-size: 1rem; margin-bottom: 15px; color: var(--text-dark);">💾 데이터 관리</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn" onclick="viewLocalStorage()" style="background: #64748b;">
+                        🔍 localStorage 확인
+                    </button>
+                    <button class="btn" onclick="exportLocalStorageToJSON()" style="background: #10b981;">
+                        📥 JSON으로 내보내기
+                    </button>
+                </div>
+                <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 10px;">
+                    💡 <strong>localStorage 확인 방법:</strong> 브라우저 개발자 도구(F12) → Application 탭 → Local Storage → 해당 사이트 → projectSchedules 키
+                </p>
+            </div>
         </div>
 
         <!-- 메인 레이아웃 (데이터 로드 후 표시) -->
@@ -611,8 +627,13 @@
             `;
         }
 
+        // 통합 데이터 구조
+        let projects = [];  // 프로젝트 목록
+        let tasks = [];      // 모든 테스크 (프로젝트에 속함)
+        let schedules = [];  // 일정
+        
+        // 하위 호환성을 위한 변수 (점진적 마이그레이션)
         let projectData = [];
-        let schedules = [];
         let currentFilter = 'member'; // 'member' or 'task'
         let selectedProject = null; // URL 파라미터로 전달된 프로젝트 이름
 
@@ -694,6 +715,24 @@
                 비고: row['비고'] || ''
             }));
             
+            // 프로젝트별로 그룹화하여 프로젝트 생성
+            const projectMap = {};
+            rawData.forEach(task => {
+                const projectName = task.사업명 || '미분류 프로젝트';
+                if (!projectMap[projectName]) {
+                    projectMap[projectName] = {
+                        id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        name: projectName,
+                        description: '',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+            });
+            
+            // 프로젝트 배열 생성
+            projects = Object.values(projectMap);
+            
             // 소분류별로 그룹화하여 기준시간 계산 (할당시간의 합)
             const subCategoryGroups = {};
             rawData.forEach(task => {
@@ -710,22 +749,27 @@
                 subCategoryGroups[key].기준시간 += task.할당시간;
             });
             
-            // 각 행에 해당 소분류의 기준시간 추가
-            projectData = rawData.map(task => {
+            // 각 행에 해당 소분류의 기준시간 추가하고 프로젝트 ID 연결
+            tasks = rawData.map(task => {
                 const key = `${task.사업명}-${task.대분류}-${task.중분류}-${task.소분류}`;
                 const group = subCategoryGroups[key];
+                const project = projectMap[task.사업명 || '미분류 프로젝트'];
                 return {
                     ...task,
+                    projectId: project.id,
                     기준시간: group ? group.기준시간 : 0
                 };
             });
+            
+            // 하위 호환성을 위한 projectData (점진적 마이그레이션)
+            projectData = tasks;
 
             // 업로드 섹션 숨기고 메인 컨텐츠 표시
             document.getElementById('uploadSection').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
 
             // 스케줄이 없거나 적으면 샘플 스케줄 생성 (절반만 등록)
-            const totalTasks = projectData.filter(t => t.할당시간 > 0).length;
+            const totalTasks = tasks.filter(t => t.할당시간 > 0).length;
             const scheduledTaskIds = new Set(schedules.map(s => s.taskId));
             const scheduledCount = scheduledTaskIds.size;
             
@@ -1134,7 +1178,9 @@
             const container = document.getElementById('teamListContainer');
             container.innerHTML = '';
 
-            if (projectData.length === 0) {
+            // tasks 또는 projectData 사용 (하위 호환성)
+            const taskList = tasks.length > 0 ? tasks : projectData;
+            if (taskList.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">👥</div>
@@ -1322,19 +1368,144 @@
             });
         }
 
-        function saveToLocalStorage() {
+        // localStorage 데이터 확인 및 표시
+        function viewLocalStorage() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) {
+                alert('localStorage에 저장된 데이터가 없습니다.');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(saved);
+                const dataStr = JSON.stringify(data, null, 2);
+                
+                // 콘솔에 출력
+                console.log('=== localStorage 데이터 (projectSchedules) ===');
+                console.log(data);
+                console.log('==========================================');
+                
+                // 간단한 alert로 표시
+                alert('localStorage 데이터를 확인했습니다.\n\n브라우저 개발자 도구(F12) → Console 탭에서 전체 데이터를 확인할 수 있습니다.\n\n또는 "JSON으로 내보내기" 버튼을 사용하여 파일로 다운로드할 수 있습니다.');
+            } catch (e) {
+                alert('데이터를 읽는 중 오류가 발생했습니다: ' + e.message);
+            }
+        }
+        
+        // localStorage 데이터를 JSON 파일로 내보내기
+        function exportLocalStorageToJSON() {
+            const saved = localStorage.getItem('projectSchedules');
+            if (!saved) {
+                alert('localStorage에 저장된 데이터가 없습니다.');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(saved);
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'data.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                alert('localStorage 데이터를 data.json 파일로 다운로드했습니다.');
+            } catch (e) {
+                alert('데이터를 내보내는 중 오류가 발생했습니다: ' + e.message);
+            }
+        }
+        
+        // JSON 파일로 저장
+        async function saveToJSON() {
             const data = {
-                projectData,
-                schedules,
-                lastUpdated: new Date().toISOString()
+                projects,      // 프로젝트 목록
+                tasks,         // 모든 테스크
+                schedules,     // 일정
+                lastUpdated: new Date().toISOString(),
+                // 하위 호환성을 위한 projectData
+                projectData: tasks
+            };
+            
+            // JSON 파일로 다운로드
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'data.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function saveToLocalStorage() {
+            // 통합 데이터 구조로 저장
+            const data = {
+                projects,      // 프로젝트 목록
+                tasks,         // 모든 테스크
+                schedules,     // 일정
+                lastUpdated: new Date().toISOString(),
+                // 하위 호환성을 위한 projectData (점진적 마이그레이션)
+                projectData: tasks
             };
             localStorage.setItem('projectSchedules', JSON.stringify(data));
+        }
+        
+        // JSON 파일에서 데이터 로드
+        async function loadFromJSON() {
+            try {
+                const response = await fetch('data.json');
+                if (!response.ok) {
+                    console.log('data.json 파일을 찾을 수 없습니다. localStorage에서 로드합니다.');
+                    return null;
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('JSON 파일 로드 오류:', error);
+                return null;
+            }
+        }
+        
+        // 데이터 로드 (JSON 파일 우선, 없으면 localStorage)
+        async function loadData() {
+            // 먼저 JSON 파일에서 로드 시도
+            const jsonData = await loadFromJSON();
+            if (jsonData) {
+                projects = jsonData.projects || [];
+                tasks = jsonData.tasks || [];
+                schedules = jsonData.schedules || [];
+                projectData = jsonData.projectData || tasks || [];
+                console.log('✅ JSON 파일에서 데이터 로드 완료');
+                return true;
+            }
+            
+            // JSON 파일이 없으면 localStorage에서 로드
+            const saved = localStorage.getItem('projectSchedules');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    projects = data.projects || [];
+                    tasks = data.tasks || [];
+                    schedules = data.schedules || [];
+                    projectData = data.projectData || tasks || [];
+                    console.log('✅ localStorage에서 데이터 로드 완료');
+                    return true;
+                } catch (e) {
+                    console.error('데이터 로드 오류:', e);
+                }
+            }
+            return false;
         }
 
         // 샘플 스케줄 데이터 생성 (등록된 것과 안된 것을 반반 섞기)
         function createSampleSchedules() {
-            if (projectData.length === 0) {
-                console.log('⚠️ projectData가 비어있습니다.');
+            // tasks 또는 projectData 사용 (하위 호환성)
+            const taskList = tasks.length > 0 ? tasks : projectData;
+            if (taskList.length === 0) {
+                console.log('⚠️ 테스크 데이터가 비어있습니다.');
                 return [];
             }
             
@@ -1346,7 +1517,7 @@
             
             // 테스크를 사람별로 그룹화
             const tasksByPerson = {};
-            projectData.forEach(task => {
+            taskList.forEach(task => {
                 if (task.할당시간 > 0) {
                     if (!tasksByPerson[task.이름]) {
                         tasksByPerson[task.이름] = [];
@@ -1449,21 +1620,29 @@
             
             Object.keys(otherTasksByPerson).sort().forEach(personName => {
                 const personTasks = otherTasksByPerson[personName];
-                // 각 사람의 테스크 중 절반만 등록
-                const tasksToSchedule = Math.max(1, Math.ceil(personTasks.length / 2));
+                // 이경수 유저는 대부분의 테스크를 등록, 다른 사람은 절반만 등록
+                const isLeeGyeongSu = personName === '이경수';
+                const tasksToSchedule = isLeeGyeongSu 
+                    ? personTasks.length  // 이경수는 모든 테스크 등록
+                    : Math.max(1, Math.ceil(personTasks.length / 2));  // 다른 사람은 절반만
                 
                 personTasks.slice(0, tasksToSchedule).forEach((task, idx) => {
                     if (!scheduledTaskIds.has(task.id)) {
                         const scheduledHours = task.할당시간;
                         if (scheduledHours > 0) {
-                            // 일부 테스크는 연속되지 않게 등록 (시각디자인, 교육콘텐츠개발 등)
-                            const shouldSplit = (task.중분류 && (task.중분류.includes('시각') || task.중분류.includes('교육') || task.중분류.includes('디자인'))) ||
-                                              (task.소분류 && (task.소분류.includes('시각') || task.소분류.includes('교육') || task.소분류.includes('디자인'))) ||
-                                              (idx % 3 === 0 && scheduledHours >= 4); // 3개 중 1개는 연속되지 않게
+                            // 이경수 유저는 더 다양한 패턴으로 등록 (연속/비연속 혼합)
+                            // 다른 사람은 일부 테스크만 연속되지 않게 등록
+                            const shouldSplit = isLeeGyeongSu 
+                                ? (idx % 2 === 0 && scheduledHours >= 3) || (task.중분류 && (task.중분류.includes('시각') || task.중분류.includes('교육') || task.중분류.includes('디자인'))) || (task.소분류 && (task.소분류.includes('시각') || task.소분류.includes('교육') || task.소분류.includes('디자인')))
+                                : (task.중분류 && (task.중분류.includes('시각') || task.중분류.includes('교육') || task.중분류.includes('디자인'))) ||
+                                  (task.소분류 && (task.소분류.includes('시각') || task.소분류.includes('교육') || task.소분류.includes('디자인'))) ||
+                                  (idx % 3 === 0 && scheduledHours >= 4); // 3개 중 1개는 연속되지 않게
                             
-                            if (shouldSplit && scheduledHours >= 4) {
+                            if (shouldSplit && scheduledHours >= 3) {
                                 // 테스크를 여러 개의 스케줄로 나누기
-                                const targetSchedules = Math.min(4, Math.ceil(scheduledHours / 2));
+                                // 이경수 유저는 더 많은 스케줄로 나누기
+                                const maxSchedules = isLeeGyeongSu ? 6 : 4;
+                                const targetSchedules = Math.min(maxSchedules, Math.ceil(scheduledHours / 2));
                                 const chunkSize = Math.max(1, Math.floor(scheduledHours / targetSchedules));
                                 
                                 for (let i = 0; i < targetSchedules; i++) {
@@ -1472,11 +1651,18 @@
                                     if (chunkHours <= 0) break;
                                     
                                     // 띄엄띄엄 날짜에 등록
+                                    // 이경수 유저는 더 다양한 날짜 패턴
                                     const chunkDate = new Date(today);
-                                    chunkDate.setDate(today.getDate() + scheduleCount * 2 + (i * 2));
+                                    const dayOffset = isLeeGyeongSu 
+                                        ? scheduleCount * 1 + (i * 2)  // 더 자주 등록
+                                        : scheduleCount * 2 + (i * 2);
+                                    chunkDate.setDate(today.getDate() + dayOffset);
                                     
                                     // 시간도 띄엄띄엄
-                                    const timeSlots = ['09:00', '14:00', '10:00', '15:00'];
+                                    // 이경수 유저는 더 다양한 시간대
+                                    const timeSlots = isLeeGyeongSu 
+                                        ? ['09:00', '14:00', '10:00', '15:00', '11:00', '13:00']
+                                        : ['09:00', '14:00', '10:00', '15:00'];
                                     const startTime = timeSlots[i % timeSlots.length];
                                     
                                     const [startH, startM] = startTime.split(':').map(Number);
@@ -1581,7 +1767,7 @@
         }
 
         // 페이지 로드 시 - 항상 업로드 섹션만 표시
-        window.onload = function() {
+        window.onload = async function() {
             // URL 파라미터에서 프로젝트 이름 확인
             selectedProject = getUrlParameter('project');
             
@@ -1591,56 +1777,49 @@
                 return;
             }
             
-            // localStorage에 데이터가 있어도 처음에는 업로드 섹션만 표시
-            const saved = localStorage.getItem('projectSchedules');
-            if (saved) {
-                const data = JSON.parse(saved);
-                projectData = data.projectData || [];
-                schedules = data.schedules || [];
+            // 데이터 로드 (JSON 파일 우선, 없으면 localStorage)
+            const hasData = await loadData();
+            if (hasData) {
+                
+                // tasks 또는 projectData 사용 (하위 호환성)
+                const taskList = tasks.length > 0 ? tasks : projectData;
                 
                 // 스케줄이 없거나 적으면 샘플 스케줄 생성/추가 (절반만 등록)
-                if (projectData.length > 0 && schedules.length === 0) {
+                if (taskList.length > 0 && schedules.length === 0) {
                     const newSchedules = createSampleSchedules();
                     schedules = newSchedules;
                     saveToLocalStorage();
-                } else if (projectData.length > 0 && schedules.length > 0) {
-                    // 스케줄이 없거나 적으면 샘플 스케줄 생성/추가 (절반만 등록)
-                    if (projectData.length > 0 && schedules.length === 0) {
-                        const newSchedules = createSampleSchedules();
-                        schedules = newSchedules;
+                } else if (taskList.length > 0 && schedules.length > 0) {
+                    // 기존 스케줄이 있으면 절반만 등록되도록 조정
+                    const totalTasks = taskList.filter(t => t.할당시간 > 0).length;
+                    const scheduledTasks = new Set(schedules.map(s => s.taskId));
+                    const scheduledCount = scheduledTasks.size;
+                    
+                    // 등록된 테스크가 전체의 절반 이상이면 일부 제거
+                    if (scheduledCount > totalTasks * 0.6) {
+                        // 절반 정도만 남기도록 조정
+                        const targetCount = Math.floor(totalTasks * 0.5);
+                        const schedulesToKeep = schedules.slice(0, targetCount);
+                        schedules = schedulesToKeep;
                         saveToLocalStorage();
-                    } else if (projectData.length > 0 && schedules.length > 0) {
-                        // 기존 스케줄이 있으면 절반만 등록되도록 조정
-                        const totalTasks = projectData.filter(t => t.할당시간 > 0).length;
-                        const scheduledTasks = new Set(schedules.map(s => s.taskId));
-                        const scheduledCount = scheduledTasks.size;
-                        
-                        // 등록된 테스크가 전체의 절반 이상이면 일부 제거
-                        if (scheduledCount > totalTasks * 0.6) {
-                            // 절반 정도만 남기도록 조정
-                            const targetCount = Math.floor(totalTasks * 0.5);
-                            const schedulesToKeep = schedules.slice(0, targetCount);
-                            schedules = schedulesToKeep;
-                            saveToLocalStorage();
-                        }
                     }
-                    
-                    // 데이터가 있으면 업로드 섹션에 안내 메시지 추가
-                    if (projectData.length > 0) {
-                        const uploadSection = document.getElementById('uploadSection');
-                        const existingP = uploadSection.querySelector('p:last-of-type');
-                        if (existingP && !existingP.textContent.includes('이미 등록된 데이터')) {
-                            const infoP = document.createElement('p');
-                            infoP.style.cssText = 'color: #3b82f6; font-size: 0.9rem; margin-top: 15px; font-weight: 600;';
-                            infoP.textContent = `ℹ️ 이미 ${projectData.length}개의 테스크가 등록되어 있습니다. 새로 업로드하면 기존 데이터가 대체됩니다.`;
-                            uploadSection.appendChild(infoP);
-                        }
-                    }
-                    
-                    // 항상 업로드 섹션만 표시
-                    document.getElementById('uploadSection').style.display = 'block';
-                    document.getElementById('mainContent').style.display = 'none';
                 }
+                
+                // 데이터가 있으면 업로드 섹션에 안내 메시지 추가
+                if (taskList.length > 0) {
+                    const uploadSection = document.getElementById('uploadSection');
+                    const existingP = uploadSection.querySelector('p:last-of-type');
+                    if (existingP && !existingP.textContent.includes('이미 등록된 데이터')) {
+                        const infoP = document.createElement('p');
+                        infoP.style.cssText = 'color: #3b82f6; font-size: 0.9rem; margin-top: 15px; font-weight: 600;';
+                        infoP.textContent = `ℹ️ 이미 ${taskList.length}개의 테스크가 등록되어 있습니다. 새로 업로드하면 기존 데이터가 대체됩니다.`;
+                        uploadSection.appendChild(infoP);
+                    }
+                }
+                
+                // 항상 업로드 섹션만 표시
+                document.getElementById('uploadSection').style.display = 'block';
+                document.getElementById('mainContent').style.display = 'none';
             } else {
                 // 데이터가 없으면 업로드 섹션만 표시
                 document.getElementById('uploadSection').style.display = 'block';
@@ -1648,12 +1827,9 @@
             }
             
             // localStorage 변경 감지 (task_schedule.html에서 스케줄 등록 시 자동 반영)
-            window.addEventListener('storage', function(e) {
+            window.addEventListener('storage', async function(e) {
                 if (e.key === 'projectSchedules') {
-                    const saved = localStorage.getItem('projectSchedules');
-                    if (saved) {
-                        const data = JSON.parse(saved);
-                        projectData = data.projectData || [];
+                    await loadData();
                         schedules = data.schedules || [];
                         
                         // 메인 컨텐츠가 표시 중이면 다시 렌더링

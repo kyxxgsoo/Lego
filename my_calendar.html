@@ -879,66 +879,106 @@
             window.location.href = 'login.html';
         }
 
-        // 데이터 구조
-        const USERS = {
-            'user-kim': { name: '이경수', team: 'dev' },
-            'user-lee': { name: '문정석', team: 'dev' },
-            'user-park': { name: '박명수', team: 'design' },
-            'user-haha': { name: '하하', team: 'design' }
-        };
-
-        const CATEGORIES = {
-            'planning': { name: '기획', color: 'blue', colorCode: '#3b82f6' },
-            'development': { name: '개발', color: 'green', colorCode: '#22c55e' },
-            'design': { name: '디자인', color: 'yellow', colorCode: '#eab308' }
-        };
-
-        const PROJECTS = {
-            'project-a': {
-                name: '프로젝트 A',
-                standardHours: 100,
-                assignedHours: 60
-            },
-            'project-b': {
-                name: '프로젝트 B',
-                standardHours: 80,
-                assignedHours: 45
+        // JSON 파일에서 데이터 로드
+        let USERS = {};
+        let CATEGORIES = {};
+        let PROJECTS = {};
+        let TASKS = {};
+        
+        async function loadMockData() {
+            try {
+                // users.json 로드
+                const usersResponse = await fetch('users.json');
+                if (usersResponse.ok) {
+                    const usersData = await usersResponse.json();
+                    USERS = {};
+                    usersData.users.forEach(user => {
+                        USERS[user.id] = { name: user.name, team: user.team };
+                    });
+                    CATEGORIES = usersData.categories || {};
+                }
+                
+                // projects.json 로드
+                const projectsResponse = await fetch('projects.json');
+                if (projectsResponse.ok) {
+                    const projectsData = await projectsResponse.json();
+                    PROJECTS = {};
+                    projectsData.projects.forEach(project => {
+                        PROJECTS[project.id] = {
+                            name: project.name,
+                            standardHours: 0,
+                            assignedHours: 0
+                        };
+                    });
+                    
+                    // tasks를 객체로 변환
+                    TASKS = {};
+                    projectsData.tasks.forEach(task => {
+                        TASKS[task.id] = {
+                            taskId: task.id,
+                            title: task.소분류 || task.중분류,
+                            category: getCategoryFromMajor(task.대분류),
+                            standardHours: task.기준시간 || 0,
+                            projectId: task.projectId
+                        };
+                    });
+                }
+            } catch (error) {
+                console.error('목업 데이터 로드 오류:', error);
             }
-        };
-
-        const TASKS = {
-            'task-001': {
-                taskId: 'task-001',
-                title: 'DB 설계',
-                category: 'planning',
-                standardHours: 16,
-                projectId: 'project-a'
-            },
-            'task-002': {
-                taskId: 'task-002',
-                title: 'API 개발',
-                category: 'development',
-                standardHours: 24,
-                projectId: 'project-a'
-            },
-            'task-003': {
-                taskId: 'task-003',
-                title: 'UI 디자인',
-                category: 'design',
-                standardHours: 20,
-                projectId: 'project-b'
+        }
+        
+        function getCategoryFromMajor(대분류) {
+            if (!대분류) return 'planning';
+            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영')) {
+                return 'planning';
+            } else if (대분류.includes('개발') || 대분류.includes('재무')) {
+                return 'development';
+            } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
+                return 'design';
             }
-        };
+            return 'planning';
+        }
 
         // localStorage에서 스케줄 데이터 로드
         let TASK_ASSIGNMENTS = [];
         let filteredAssignments = [];
         
-        function loadSchedulesFromLocalStorage() {
-            const saved = localStorage.getItem('projectSchedules');
-            if (saved) {
+        // JSON 파일에서 데이터 로드
+        async function loadFromJSON() {
+            try {
+                const response = await fetch('data.json');
+                if (!response.ok) {
+                    return null;
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                return null;
+            }
+        }
+        
+        async function loadSchedulesFromLocalStorage() {
+            // 먼저 JSON 파일에서 로드 시도
+            let data = await loadFromJSON();
+            
+            // JSON 파일이 없으면 localStorage에서 로드
+            if (!data) {
+                const saved = localStorage.getItem('projectSchedules');
+                if (saved) {
+                    try {
+                        data = JSON.parse(saved);
+                    } catch (e) {
+                        console.error('데이터 로드 오류:', e);
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            }
+            
+            if (data) {
                 try {
-                    const data = JSON.parse(saved);
                     const schedules = data.schedules || [];
                     
                     // 스케줄을 TASK_ASSIGNMENTS 형식으로 변환
@@ -1022,16 +1062,16 @@
         loadSchedulesFromLocalStorage();
         
         // localStorage 변경 감지 (다른 탭에서 스케줄 등록 시)
-        window.addEventListener('storage', function(e) {
+        window.addEventListener('storage', async function(e) {
             if (e.key === 'projectSchedules') {
-                loadSchedulesFromLocalStorage();
+                await loadSchedulesFromLocalStorage();
             }
         });
         
-        // 주기적으로 체크 (같은 탭에서도 업데이트)
-        setInterval(function() {
-            loadSchedulesFromLocalStorage();
-        }, 2000);
+        // 주기적으로 체크 (같은 탭에서도 업데이트) - JSON 파일 우선
+        setInterval(async function() {
+            await loadSchedulesFromLocalStorage();
+        }, 3000);
 
         function getSchedulesForDate(dateStr) {
             const schedules = [];

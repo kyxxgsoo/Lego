@@ -356,57 +356,47 @@
         </div>
     </div>
 
+    <!-- 사용자 데이터 JavaScript 파일 로드 -->
+    <script src="users-data.js"></script>
+    
     <script>
-        // 임시 사용자 데이터
-        const USERS = {
-            'admin': {
-                password: 'admin123',
-                role: 'admin',
-                name: '관리자',
-                userId: 'admin',
-                redirectUrl: 'my_calendar.html'
-            },
-            'teamlead1': {
-                password: 'team123',
-                role: 'teamlead',
-                name: '팀장1',
-                team: 'dev',
-                userId: 'teamlead1',
-                redirectUrl: 'my_calendar.html'
-            },
-            'user-kim': {
-                password: 'user123',
-                role: 'user',
-                name: '이경수',
-                team: 'dev',
-                userId: 'user-kim',
-                redirectUrl: 'my_calendar.html'
-            },
-            'user-lee': {
-                password: 'user123',
-                role: 'user',
-                name: '문정석',
-                team: 'dev',
-                userId: 'user-lee',
-                redirectUrl: 'my_calendar.html'
-            },
-            'user-park': {
-                password: 'user123',
-                role: 'user',
-                name: '박명수',
-                team: 'design',
-                userId: 'user-park',
-                redirectUrl: 'my_calendar.html'
-            },
-            'user-haha': {
-                password: 'user123',
-                role: 'user',
-                name: '하하',
-                team: 'design',
-                userId: 'user-haha',
-                redirectUrl: 'my_calendar.html'
+        // 사용자 데이터 로드 (users-data.js에서)
+        let USERS = {};
+        
+        function loadUsers() {
+            // users-data.js에서 로드된 USERS_DATA 사용
+            if (typeof USERS_DATA !== 'undefined' && USERS_DATA.users) {
+                USERS = {};
+                USERS_DATA.users.forEach(user => {
+                    USERS[user.id] = {
+                        name: user.name,
+                        password: user.password || '1234',
+                        role: user.role || 'user',
+                        team: user.team,
+                        department: user.department,
+                        affiliation: user.affiliation,
+                        redirectUrl: user.redirectUrl || getDefaultRedirectUrl(user.role)
+                    };
+                });
+                console.log('✅ 사용자 데이터 로드 완료:', USERS);
+                return true;
+            } else {
+                console.error('users-data.js가 로드되지 않았습니다.');
+                return false;
             }
-        };
+        }
+
+        // 역할에 따른 기본 리다이렉트 URL 반환
+        function getDefaultRedirectUrl(role) {
+            switch(role) {
+                case 'admin':
+                    return 'admin.html';
+                case 'teamlead':
+                    return 'teamlead.html';
+                default:
+                    return 'my_calendar.html';
+            }
+        }
 
         function togglePassword() {
             const passwordInput = document.getElementById('password');
@@ -423,6 +413,16 @@
         function handleLogin(event) {
             event.preventDefault();
             
+            // 사용자 데이터가 로드되지 않았다면 먼저 로드
+            if (Object.keys(USERS).length === 0) {
+                const loaded = loadUsers();
+                if (!loaded) {
+                    document.getElementById('errorMessage').textContent = '사용자 데이터를 불러올 수 없습니다.';
+                    document.getElementById('errorMessage').classList.add('show');
+                    return;
+                }
+            }
+            
             const userId = document.getElementById('userId').value;
             const password = document.getElementById('password').value;
             const remember = document.getElementById('remember').checked;
@@ -430,6 +430,7 @@
             const user = USERS[userId];
 
             if (!user || user.password !== password) {
+                document.getElementById('errorMessage').textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
                 document.getElementById('errorMessage').classList.add('show');
                 return;
             }
@@ -455,13 +456,15 @@
             console.log('✅ 로그인 성공:', loginData);
             
             // 역할에 따라 다른 페이지로 이동
+            const redirectUrl = user.redirectUrl || getDefaultRedirectUrl(user.role);
             setTimeout(() => {
-                window.location.href = user.redirectUrl;
+                window.location.href = redirectUrl;
             }, 500);
         }
 
         // 페이지 로드 시 기억된 사용자 확인
         window.onload = function() {
+            loadUsers();
             const rememberedUser = localStorage.getItem('rememberedUser');
             if (rememberedUser) {
                 document.getElementById('userId').value = rememberedUser;

@@ -647,72 +647,55 @@
         // 
         // ============================================
         
-        // 사용자 정보
-        const USERS = {
-            'user-kim': { name: '이경수', team: 'dev' },
-            'user-lee': { name: '이영희', team: 'dev' },
-            'user-park': { name: '박명수', team: 'design' },
-            'user-haha': { name: '하하', team: 'design' }
-        };
+        // JSON 파일에서 데이터 로드
+        let USERS = {};
+        let CATEGORIES = {};
+        let TASKS = {};
         
-        // 업무 카테고리 (소분류) - 색상 기준
-        const CATEGORIES = {
-            'planning': { name: '기획', color: 'blue', colorCode: '#3b82f6' },
-            'development': { name: '개발', color: 'green', colorCode: '#22c55e' },
-            'design': { name: '디자인', color: 'yellow', colorCode: '#eab308' }
-        };
-        
-        // 테스크 정의 (프로젝트의 작업 단위)
-        const TASKS = {
-            'task-001': {
-                taskId: 'task-001',
-                title: '요구사항 분석',
-                category: 'planning',
-                totalHours: 8
-            },
-            'task-002': {
-                taskId: 'task-002',
-                title: 'DB 설계',
-                category: 'development',
-                totalHours: 16
-            },
-            'task-003': {
-                taskId: 'task-003',
-                title: 'API 개발',
-                category: 'development',
-                totalHours: 24
-            },
-            'task-004': {
-                taskId: 'task-004',
-                title: 'UI 디자인',
-                category: 'design',
-                totalHours: 20
-            },
-            'task-005': {
-                taskId: 'task-005',
-                title: '프론트엔드 개발',
-                category: 'development',
-                totalHours: 20
-            },
-            'task-006': {
-                taskId: 'task-006',
-                title: '통합 테스트',
-                category: 'development',
-                totalHours: 12
-            },
-            'task-007': {
-                taskId: 'task-007',
-                title: '디자인 시스템 구축',
-                category: 'design',
-                totalHours: 16
-            },
-            'task-008': {
-                taskId: 'task-008',
-                title: '프로젝트 문서화',
-                category: 'planning',
-                totalHours: 10
+        async function loadMockData() {
+            try {
+                // users.json 로드
+                const usersResponse = await fetch('users.json');
+                if (usersResponse.ok) {
+                    const usersData = await usersResponse.json();
+                    USERS = {};
+                    usersData.users.forEach(user => {
+                        USERS[user.id] = { name: user.name, team: user.team };
+                    });
+                    CATEGORIES = usersData.categories || {};
+                }
+                
+                // projects.json 로드
+                const projectsResponse = await fetch('projects.json');
+                if (projectsResponse.ok) {
+                    const projectsData = await projectsResponse.json();
+                    // tasks를 객체로 변환
+                    TASKS = {};
+                    projectsData.tasks.forEach(task => {
+                        TASKS[task.id] = {
+                            taskId: task.id,
+                            title: task.소분류 || task.중분류,
+                            category: getCategoryFromMajor(task.대분류),
+                            totalHours: task.기준시간 || task.할당시간 || 0
+                        };
+                    });
+                }
+            } catch (error) {
+                console.error('목업 데이터 로드 오류:', error);
             }
-        };
+        }
+        
+        function getCategoryFromMajor(대분류) {
+            if (!대분류) return 'planning';
+            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영')) {
+                return 'planning';
+            } else if (대분류.includes('개발') || 대분류.includes('재무')) {
+                return 'development';
+            } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
+                return 'design';
+            }
+            return 'planning';
+        }
         
         // localStorage에서 팀원이 등록한 스케줄 로드
         function loadSchedulesFromLocalStorage() {
@@ -789,78 +772,19 @@
             return converted;
         }
 
-        // 테스크 배정 스케줄 (실제 작업 일정)
-        let TASK_ASSIGNMENTS = [
-            // task-001: 요구사항 분석 (8시간) - 김철수 4h + 이영희 4h
-            { taskId: 'task-001', user: 'user-kim', startDate: '2023-02-27', endDate: '2023-02-28', startTime: '10:00', endTime: '12:00' },  // 2일 연속, 각 2시간 = 4시간
-            { taskId: 'task-001', user: 'user-lee', startDate: '2023-02-27', endDate: '2023-02-27', startTime: '14:00', endTime: '18:00' },  // 4시간
-            
-            // task-002: DB 설계 (16시간) - 김철수 6h + 이영희 10h
-            { taskId: 'task-002', user: 'user-kim', startDate: '2023-03-01', endDate: '2023-03-02', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
-            { taskId: 'task-002', user: 'user-lee', startDate: '2023-03-06', endDate: '2023-03-08', startTime: '10:00', endTime: '13:00', note: '데이터베이스 스키마 설계' },  // 3일 연속, 각 3시간 = 9시간
-            { taskId: 'task-002', user: 'user-lee', startDate: '2023-03-08', endDate: '2023-03-08', startTime: '14:00', endTime: '15:00' },  // 1시간 추가
-            
-            // task-003: API 개발 (24시간) - 이영희 24h
-            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-09', endDate: '2023-03-09', startTime: '10:00', endTime: '14:00' },  // 4시간
-            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-13', endDate: '2023-03-14', startTime: '10:00', endTime: '15:00' },  // 2일 연속, 각 5시간 = 10시간
-            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-17', endDate: '2023-03-17', startTime: '10:00', endTime: '15:00' },  // 5시간
-            { taskId: 'task-003', user: 'user-lee', startDate: '2023-03-20', endDate: '2023-03-20', startTime: '10:00', endTime: '15:00' },  // 5시간
-            
-            // task-004: UI 디자인 (20시간) - 박명수 20h
-            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-01', endDate: '2023-03-01', startTime: '12:00', endTime: '14:00' },  // 2시간
-            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-03', endDate: '2023-03-03', startTime: '14:00', endTime: '16:00' },  // 2시간
-            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-08', endDate: '2023-03-10', startTime: '10:00', endTime: '13:00' },  // 3일 연속, 각 3시간 = 9시간
-            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-14', endDate: '2023-03-15', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
-            { taskId: 'task-004', user: 'user-park', startDate: '2023-03-15', endDate: '2023-03-15', startTime: '14:00', endTime: '15:00', note: '최종 검토' },  // 1시간
-            
-            // task-005: 프론트엔드 개발 (20시간) - 김철수 12h + 박명수 8h
-            { taskId: 'task-005', user: 'user-kim', startDate: '2023-03-17', endDate: '2023-03-17', startTime: '13:00', endTime: '16:00' },  // 3시간
-            { taskId: 'task-005', user: 'user-kim', startDate: '2023-03-21', endDate: '2023-03-23', startTime: '10:00', endTime: '13:00' },  // 3일 연속, 각 3시간 = 9시간
-            { taskId: 'task-005', user: 'user-park', startDate: '2023-03-15', endDate: '2023-03-15', startTime: '14:00', endTime: '16:00' },  // 2시간 (디자인팀에서 협업)
-            { taskId: 'task-005', user: 'user-park', startDate: '2023-03-17', endDate: '2023-03-17', startTime: '13:00', endTime: '16:00' },  // 3시간
-            { taskId: 'task-005', user: 'user-park', startDate: '2023-03-27', endDate: '2023-03-27', startTime: '14:00', endTime: '17:00' },  // 3시간
-            
-            // task-006: 통합 테스트 (12시간) - 이영희 12h
-            { taskId: 'task-006', user: 'user-lee', startDate: '2023-03-24', endDate: '2023-03-24', startTime: '10:00', endTime: '15:00' },  // 5시간
-            { taskId: 'task-006', user: 'user-lee', startDate: '2023-03-29', endDate: '2023-03-30', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
-            { taskId: 'task-006', user: 'user-lee', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '10:00', endTime: '11:00' },  // 1시간
-            
-            // task-007: 디자인 시스템 구축 (16시간) - 박명수 16h
-            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-20', endDate: '2023-03-20', startTime: '10:00', endTime: '13:00' },  // 3시간
-            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-27', endDate: '2023-03-28', startTime: '10:00', endTime: '13:00' },  // 2일 연속, 각 3시간 = 6시간
-            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-29', endDate: '2023-03-31', startTime: '10:00', endTime: '12:00' },  // 3일 연속, 각 2시간 = 6시간
-            { taskId: 'task-007', user: 'user-park', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '14:00', endTime: '15:00' },  // 1시간
-            
-            // task-008: 프로젝트 문서화 (10시간) - 김철수 4h + 하하 6h
-            { taskId: 'task-008', user: 'user-kim', startDate: '2023-03-23', endDate: '2023-03-23', startTime: '14:00', endTime: '16:00' },  // 2시간
-            { taskId: 'task-008', user: 'user-kim', startDate: '2023-03-27', endDate: '2023-03-27', startTime: '10:00', endTime: '12:00' },  // 2시간
-            { taskId: 'task-008', user: 'user-kim', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '10:00', endTime: '12:00' },  // 2시간 (다른 카테고리)
-            { taskId: 'task-008', user: 'user-lee', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '14:00', endTime: '16:00' },  // 2시간
-            { taskId: 'task-008', user: 'user-haha', startDate: '2023-03-29', endDate: '2023-03-29', startTime: '10:00', endTime: '12:00' },  // 2시간
-            { taskId: 'task-008', user: 'user-haha', startDate: '2023-04-04', endDate: '2023-04-04', startTime: '13:00', endTime: '17:00' },  // 4시간
-            
-            // 추가 일정들 (기존 데이터 유지용)
-            { taskId: 'task-009', user: 'user-kim', startDate: '2023-03-31', endDate: '2023-03-31', startTime: '14:00', endTime: '16:00' },  // 디자인 QA
-            { taskId: 'task-010', user: 'user-kim', startDate: '2023-04-03', endDate: '2023-04-03', startTime: '10:00', endTime: '12:00' },  // 프로젝트 회고
-            { taskId: 'task-011', user: 'user-lee', startDate: '2023-04-03', endDate: '2023-04-03', startTime: '14:00', endTime: '16:00' },  // 시스템 모니터링
-            { taskId: 'task-012', user: 'user-park', startDate: '2023-04-04', endDate: '2023-04-04', startTime: '10:00', endTime: '15:00' },  // 디자인 시스템 정리
-            { taskId: 'task-013', user: 'user-kim', startDate: '2023-04-05', endDate: '2023-04-05', startTime: '10:00', endTime: '12:00' },  // Q2 계획
-            { taskId: 'task-014', user: 'user-lee', startDate: '2023-04-05', endDate: '2023-04-05', startTime: '13:00', endTime: '16:00' }   // 성능 개선
-        ];
+        // 테스크 배정 스케줄 (실제 작업 일정) - localStorage와 JSON에서 로드
+        let TASK_ASSIGNMENTS = [];
         
-        // 추가 테스크 정의 (위 배정에 사용된 task-009~014)
-        TASKS['task-009'] = { taskId: 'task-009', title: '디자인 QA', category: 'design', totalHours: 2 };
-        TASKS['task-010'] = { taskId: 'task-010', title: '프로젝트 회고', category: 'planning', totalHours: 2 };
-        TASKS['task-011'] = { taskId: 'task-011', title: '시스템 모니터링', category: 'development', totalHours: 2 };
-        TASKS['task-012'] = { taskId: 'task-012', title: '디자인 시스템 정리', category: 'design', totalHours: 5 };
-        TASKS['task-013'] = { taskId: 'task-013', title: 'Q2 계획 수립', category: 'planning', totalHours: 2 };
-        TASKS['task-014'] = { taskId: 'task-014', title: '성능 개선', category: 'development', totalHours: 3 };
-        
-        // localStorage에서 팀원이 등록한 스케줄 병합
-        const userSchedules = loadSchedulesFromLocalStorage();
-        const convertedSchedules = convertUserSchedulesToAssignments(userSchedules);
-        TASK_ASSIGNMENTS = [...TASK_ASSIGNMENTS, ...convertedSchedules];
-        console.log('📊 전체 스케줄:', TASK_ASSIGNMENTS);
+        // 초기 로드 시 목업 데이터 로드 및 스케줄 병합
+        (async function() {
+            await loadMockData();
+            
+            // localStorage에서 팀원이 등록한 스케줄 병합
+            const userSchedules = loadSchedulesFromLocalStorage();
+            const convertedSchedules = convertUserSchedulesToAssignments(userSchedules);
+            TASK_ASSIGNMENTS = [...TASK_ASSIGNMENTS, ...convertedSchedules];
+            console.log('📊 전체 스케줄:', TASK_ASSIGNMENTS);
+        })();
         
         // ============================================
         // 📅 헬퍼 함수: TASK_ASSIGNMENTS로부터 날짜별 스케줄 생성
@@ -2119,13 +2043,39 @@
         // 💾 localStorage에서 스케줄 데이터 로드
         // ============================================
         
-        function loadSchedulesFromLocalStorage() {
-            const saved = localStorage.getItem('projectSchedules');
-            if (!saved) return;
-            
+        // JSON 파일에서 데이터 로드
+        async function loadFromJSON() {
             try {
-                const data = JSON.parse(saved);
-                const schedules = data.schedules || [];
+                const response = await fetch('data.json');
+                if (!response.ok) {
+                    return null;
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                return null;
+            }
+        }
+        
+        async function loadSchedulesFromLocalStorage() {
+            // 먼저 JSON 파일에서 로드 시도
+            let data = await loadFromJSON();
+            
+            // JSON 파일이 없으면 localStorage에서 로드
+            if (!data) {
+                const saved = localStorage.getItem('projectSchedules');
+                if (!saved) return;
+                
+                try {
+                    data = JSON.parse(saved);
+                } catch (e) {
+                    return;
+                }
+            }
+            
+            if (data) {
+                try {
+                    const schedules = data.schedules || [];
                 
                 console.log('📥 저장된 스케줄 로드:', schedules);
                 

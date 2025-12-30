@@ -617,44 +617,113 @@
             `;
         }
 
-        // 프로젝트 데이터 로드 및 렌더링
-        function loadProjects() {
+        // JSON 파일에서 데이터 로드
+        async function loadFromJSON() {
+            try {
+                const response = await fetch('data.json');
+                if (!response.ok) {
+                    console.log('data.json 파일을 찾을 수 없습니다. localStorage에서 로드합니다.');
+                    return null;
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('JSON 파일 로드 오류:', error);
+                return null;
+            }
+        }
+        
+        // 데이터 로드 (JSON 파일 우선, 없으면 localStorage)
+        async function loadData() {
+            // 먼저 JSON 파일에서 로드 시도
+            const jsonData = await loadFromJSON();
+            if (jsonData) {
+                return jsonData;
+            }
+            
+            // JSON 파일이 없으면 localStorage에서 로드
             const saved = localStorage.getItem('projectSchedules');
-            if (!saved) {
+            if (saved) {
+                try {
+                    return JSON.parse(saved);
+                } catch (e) {
+                    console.error('데이터 로드 오류:', e);
+                }
+            }
+            return null;
+        }
+        
+        // 프로젝트 데이터 로드 및 렌더링
+        async function loadProjects() {
+            const data = await loadData();
+            if (!data) {
                 renderEmptyState();
                 return;
             }
 
             try {
-                const data = JSON.parse(saved);
-                const projectData = data.projectData || [];
+                // 통합 데이터 구조 로드
+                const projectsData = data.projects || [];
+                const tasksData = data.tasks || [];
                 const schedules = data.schedules || [];
+                // 하위 호환성: projectData가 없으면 tasks에서 생성
+                const projectData = data.projectData || tasksData || [];
 
-                if (projectData.length === 0) {
-                    renderEmptyState();
-                    return;
-                }
-
-                // 프로젝트별로 그룹화
-                const projects = {};
-                projectData.forEach(task => {
-                    const projectName = task.사업명 || '미분류 프로젝트';
-                    if (!projects[projectName]) {
-                        projects[projectName] = {
-                            name: projectName,
-                            tasks: [],
+                // 통합 데이터 구조 사용: 프로젝트 정보가 있으면 사용, 없으면 tasks에서 추출
+                let projects = {};
+                
+                if (projectsData.length > 0) {
+                    // 통합 구조: 프로젝트 정보가 명시적으로 있음
+                    projectsData.forEach(project => {
+                        projects[project.name] = {
+                            id: project.id,
+                            name: project.name,
+                            description: project.description || '',
+                            tasks: tasksData.filter(t => t.projectId === project.id),
                             totalStandardHours: 0,
                             totalAssignedHours: 0,
                             members: new Set()
                         };
+                    });
+                    
+                    // 각 프로젝트의 통계 계산
+                    Object.keys(projects).forEach(projectName => {
+                        const project = projects[projectName];
+                        project.tasks.forEach(task => {
+                            project.totalStandardHours += task.기준시간 || 0;
+                            project.totalAssignedHours += task.할당시간 || 0;
+                            if (task.이름) {
+                                project.members.add(task.이름);
+                            }
+                        });
+                    });
+                } else {
+                    // 하위 호환성: 기존 구조 (projectData에서 프로젝트 추출)
+                    if (projectData.length === 0) {
+                        renderEmptyState();
+                        return;
                     }
-                    projects[projectName].tasks.push(task);
-                    projects[projectName].totalStandardHours += task.기준시간 || 0;
-                    projects[projectName].totalAssignedHours += task.할당시간 || 0;
-                    if (task.이름) {
-                        projects[projectName].members.add(task.이름);
-                    }
-                });
+
+                    // 프로젝트별로 그룹화
+                    projectData.forEach(task => {
+                        const projectName = task.사업명 || '미분류 프로젝트';
+                        if (!projects[projectName]) {
+                            projects[projectName] = {
+                                name: projectName,
+                                tasks: [],
+                                totalStandardHours: 0,
+                                totalAssignedHours: 0,
+                                members: new Set()
+                            };
+                        }
+                        projects[projectName].tasks.push(task);
+                        projects[projectName].totalStandardHours += task.기준시간 || 0;
+                        projects[projectName].totalAssignedHours += task.할당시간 || 0;
+                        if (task.이름) {
+                            projects[projectName].members.add(task.이름);
+                        }
+                    });
+                }
 
                 // 시간 계산 함수
                 function calculateHours(startTime, endTime, startDate = null, endDate = null) {

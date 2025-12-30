@@ -775,21 +775,40 @@
         function processExcelData(data) {
             console.log('📊 엑셀 데이터:', data);
             
-            projectData = data.map((row, index) => ({
-                id: `task-${String(index + 1).padStart(3, '0')}`,
-                소속: row['소속'] || '',
-                이름: row['이름'] || '',
-                부서: row['부서'] || '',
-                사업명: row['사업명'] || '',
-                대분류: row['대분류'] || '',
-                중분류: row['중분류'] || '',
-                소분류: row['소분류'] || '',
-                기준시간: parseInt(row['기준시간']) || 0,
-                할당시간: parseInt(row['할당시간']) || 0,
-                비고: row['비고'] || ''
-            }));
+            // 프로젝트별로 그룹화하여 프로젝트 생성
+            const projectMap = {};
+            const rawData = data.map((row, index) => {
+                const projectName = row['사업명'] || '미분류 프로젝트';
+                if (!projectMap[projectName]) {
+                    projectMap[projectName] = {
+                        id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        name: projectName,
+                        description: '',
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                }
+                return {
+                    id: `task-${String(index + 1).padStart(3, '0')}`,
+                    projectId: projectMap[projectName].id,
+                    소속: row['소속'] || '',
+                    이름: row['이름'] || '',
+                    부서: row['부서'] || '',
+                    사업명: projectName,
+                    대분류: row['대분류'] || '',
+                    중분류: row['중분류'] || '',
+                    소분류: row['소분류'] || '',
+                    기준시간: parseInt(row['기준시간']) || 0,
+                    할당시간: parseInt(row['할당시간']) || 0,
+                    비고: row['비고'] || ''
+                };
+            });
+            
+            projects = Object.values(projectMap);
+            tasks = rawData;
+            projectData = tasks; // 하위 호환성
 
-            // localStorage에 저장 (project_register.html과 동일한 형식)
+            // localStorage에 저장 (통합 데이터 구조)
             saveToLocalStorage();
 
             // 메인 컨텐츠 표시
@@ -801,21 +820,56 @@
             alert(`${data.length}개의 테스크가 로드되었습니다!`);
         }
         
-        // localStorage에서 데이터 로드 (project_register.html과 동일한 소스 사용)
-        function loadDataFromLocalStorage() {
+        // JSON 파일에서 데이터 로드
+        async function loadFromJSON() {
+            try {
+                const response = await fetch('data.json');
+                if (!response.ok) {
+                    console.log('data.json 파일을 찾을 수 없습니다. localStorage에서 로드합니다.');
+                    return null;
+                }
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('JSON 파일 로드 오류:', error);
+                return null;
+            }
+        }
+        
+        // 데이터 로드 (JSON 파일 우선, 없으면 localStorage)
+        async function loadDataFromLocalStorage() {
+            // 먼저 JSON 파일에서 로드 시도
+            const jsonData = await loadFromJSON();
+            if (jsonData) {
+                projects = jsonData.projects || [];
+                tasks = jsonData.tasks || [];
+                schedules = jsonData.schedules || [];
+                projectData = jsonData.projectData || tasks || [];
+                
+                const taskList = tasks.length > 0 ? tasks : projectData;
+                if (taskList.length > 0) {
+                    document.getElementById('mainContent').style.display = 'block';
+                    renderTaskOverview();
+                    filterMyTasks();
+                    return true;
+                }
+            }
+            
+            // JSON 파일이 없으면 localStorage에서 로드
             const saved = localStorage.getItem('projectSchedules');
             if (saved) {
                 try {
                     const data = JSON.parse(saved);
-                    projectData = data.projectData || [];
+                    projects = data.projects || [];
+                    tasks = data.tasks || [];
                     schedules = data.schedules || [];
+                    projectData = data.projectData || tasks || [];
                     
-                    if (projectData.length > 0) {
-                        // 데이터가 있으면 메인 컨텐츠 표시
+                    const taskList = tasks.length > 0 ? tasks : projectData;
+                    if (taskList.length > 0) {
                         document.getElementById('mainContent').style.display = 'block';
-                        
                         renderTaskOverview();
-                        filterMyTasks(); // 자동으로 내 테스크 필터링
+                        filterMyTasks();
                         return true;
                     }
                 } catch (e) {
@@ -1183,10 +1237,14 @@
         }
 
         function saveToLocalStorage() {
+            // 통합 데이터 구조로 저장
             const data = {
-                projectData,
-                schedules,
-                lastUpdated: new Date().toISOString()
+                projects,      // 프로젝트 목록
+                tasks,         // 모든 테스크
+                schedules,     // 일정
+                lastUpdated: new Date().toISOString(),
+                // 하위 호환성을 위한 projectData
+                projectData: tasks
             };
             localStorage.setItem('projectSchedules', JSON.stringify(data));
             
@@ -1194,57 +1252,39 @@
             localStorage.setItem('taskSchedules', JSON.stringify(schedules));
         }
 
-        // 샘플 데이터 로드
-        function loadSampleData() {
-            const sampleData = [
-                // 프로젝트 A: 전자상거래 플랫폼 구축
-                { 소속: '개발팀', 이름: '이경수', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '상품 관리 API', 기준시간: 40, 할당시간: 24, 비고: '상품 CRUD 및 검색 기능' },
-                { 소속: '개발팀', 이름: '문정석', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '상품 관리 API', 기준시간: 40, 할당시간: 16, 비고: '상품 CRUD 및 검색 기능' },
+        // JSON 파일에서 샘플 데이터 로드
+        async function loadSampleData() {
+            try {
+                const response = await fetch('projects.json');
+                if (!response.ok) {
+                    alert('projects.json 파일을 찾을 수 없습니다.');
+                    return;
+                }
+                const data = await response.json();
                 
-                { 소속: '개발팀', 이름: '이경수', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '결제 시스템', 기준시간: 60, 할당시간: 35, 비고: 'PG사 연동 및 결제 처리' },
-                { 소속: '개발팀', 이름: '박지성', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '결제 시스템', 기준시간: 60, 할당시간: 25, 비고: 'PG사 연동 및 결제 처리' },
-                
-                { 소속: '디자인팀', 이름: '박명수', 부서: 'UI/UX', 사업명: '전자상거래 플랫폼', 대분류: '디자인', 중분류: 'UI 디자인', 소분류: '메인 화면', 기준시간: 30, 할당시간: 30, 비고: '메인 페이지 레이아웃' },
-                
-                { 소속: '기획팀', 이름: '정호영', 부서: '서비스기획', 사업명: '전자상거래 플랫폼', 대분류: '기획', 중분류: '요구사항 분석', 소분류: '사용자 시나리오', 기준시간: 20, 할당시간: 20, 비고: '사용자 여정 맵 작성' },
+                // projects.json의 tasks를 엑셀 형식으로 변환
+                const sampleData = data.tasks.map(task => ({
+                    소속: task.소속,
+                    이름: task.이름,
+                    부서: task.부서,
+                    사업명: task.사업명,
+                    대분류: task.대분류,
+                    중분류: task.중분류,
+                    소분류: task.소분류,
+                    기준시간: task.기준시간,
+                    할당시간: task.할당시간,
+                    비고: task.비고
+                }));
 
-                // 프로젝트 B: 사내 그룹웨어 시스템
-                { 소속: '개발팀', 이름: '이경수', 부서: '백엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: 'DB 설계', 소분류: '조직도 관리', 기준시간: 24, 할당시간: 14, 비고: '조직도 및 권한 DB 설계' },
-                { 소속: '개발팀', 이름: '문정석', 부서: '백엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: 'DB 설계', 소분류: '조직도 관리', 기준시간: 24, 할당시간: 10, 비고: '조직도 및 권한 DB 설계' },
-                
-                { 소속: '개발팀', 이름: '이경수', 부서: '프론트엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: '화면 개발', 소분류: '대시보드', 기준시간: 35, 할당시간: 20, 비고: 'React 기반 대시보드' },
-                { 소속: '개발팀', 이름: '최민수', 부서: '프론트엔드', 사업명: '사내 그룹웨어', 대분류: '개발', 중분류: '화면 개발', 소분류: '대시보드', 기준시간: 35, 할당시간: 15, 비고: 'React 기반 대시보드' },
-                
-                { 소속: '디자인팀', 이름: '박명수', 부서: 'UI/UX', 사업명: '사내 그룹웨어', 대분류: '디자인', 중분류: 'UI 디자인', 소분류: '관리자 페이지', 기준시간: 28, 할당시간: 28, 비고: '관리자 인터페이스 디자인' },
-
-                // 프로젝트 C: 모바일 앱 개발
-                { 소속: '개발팀', 이름: '이경수', 부서: '모바일', 사업명: '헬스케어 앱', 대분류: '개발', 중분류: '앱 개발', 소분류: '운동 기록 기능', 기준시간: 48, 할당시간: 28, 비고: 'Flutter 기반 모바일 앱' },
-                { 소속: '개발팀', 이름: '강동원', 부서: '모바일', 사업명: '헬스케어 앱', 대분류: '개발', 중분류: '앱 개발', 소분류: '운동 기록 기능', 기준시간: 48, 할당시간: 20, 비고: 'Flutter 기반 모바일 앱' },
-                
-                { 소속: '개발팀', 이름: '문정석', 부서: '백엔드', 사업명: '헬스케어 앱', 대분류: '개발', 중분류: 'API 개발', 소분류: '건강 데이터 API', 기준시간: 32, 할당시간: 32, 비고: '건강 데이터 수집 및 분석' },
-                
-                { 소속: '디자인팀', 이름: '박명수', 부서: 'UI/UX', 사업명: '헬스케어 앱', 대분류: '디자인', 중분류: 'UI 디자인', 소분류: '앱 메인 화면', 기준시간: 25, 할당시간: 25, 비고: '모바일 UI 디자인' },
-                
-                { 소속: '기획팀', 이름: '정호영', 부서: '서비스기획', 사업명: '헬스케어 앱', 대분류: '기획', 중분류: '서비스 기획', 소분류: '기능 명세', 기준시간: 18, 할당시간: 18, 비고: '앱 기능 명세서 작성' },
-
-                // 프로젝트 D: AI 챗봇 시스템
-                { 소속: '개발팀', 이름: '이경수', 부서: 'AI', 사업명: 'AI 고객 상담 챗봇', 대분류: '개발', 중분류: 'AI 모델 개발', 소분류: '자연어 처리', 기준시간: 56, 할당시간: 30, 비고: 'LLM 기반 챗봇 모델' },
-                { 소속: '개발팀', 이름: '김민재', 부서: 'AI', 사업명: 'AI 고객 상담 챗봇', 대분류: '개발', 중분류: 'AI 모델 개발', 소분류: '자연어 처리', 기준시간: 56, 할당시간: 26, 비고: 'LLM 기반 챗봇 모델' },
-                
-                { 소속: '개발팀', 이름: '문정석', 부서: '백엔드', 사업명: 'AI 고객 상담 챗봇', 대분류: '개발', 중분류: 'API 개발', 소분류: '챗봇 API', 기준시간: 40, 할당시간: 40, 비고: '챗봇 인터페이스 API' },
-
-                // 추가 팀원들
-                { 소속: '개발팀', 이름: '박지성', 부서: '백엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'API 개발', 소분류: '회원 관리 API', 기준시간: 30, 할당시간: 30, 비고: '회원가입, 로그인, 프로필 관리' },
-                { 소속: '개발팀', 이름: '최민수', 부서: '프론트엔드', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: '화면 개발', 소분류: '상품 목록 페이지', 기준시간: 28, 할당시간: 28, 비고: 'Vue.js 기반 상품 리스트' },
-                { 소속: '개발팀', 이름: '강동원', 부서: '모바일', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: '앱 개발', 소분류: '모바일 웹뷰', 기준시간: 22, 할당시간: 22, 비고: '하이브리드 앱 웹뷰' },
-                { 소속: '개발팀', 이름: '김민재', 부서: 'AI', 사업명: '전자상거래 플랫폼', 대분류: '개발', 중분류: 'AI 개발', 소분류: '상품 추천 시스템', 기준시간: 44, 할당시간: 44, 비고: '협업 필터링 추천' }
-            ];
-
-            processExcelData(sampleData);
+                processExcelData(sampleData);
+            } catch (error) {
+                console.error('projects.json 로드 오류:', error);
+                alert('프로젝트 데이터를 로드하는 중 오류가 발생했습니다.');
+            }
         }
         
         // 페이지 로드 시 저장된 데이터 복원 및 권한별 UI 설정
-        window.onload = function() {
+        window.onload = async function() {
             // 팀장 권한에 따라 샘플 데이터 버튼 표시/숨김
             if (isTeamLead) {
                 document.getElementById('sampleDataBtn').style.display = 'inline-block';
@@ -1252,15 +1292,20 @@
                 document.getElementById('sampleDataBtn').style.display = 'none';
             }
             
-            // localStorage에서 데이터 로드 (project_register.html과 동일한 소스)
-            loadDataFromLocalStorage();
+            // 데이터 로드 (JSON 파일 우선, 없으면 localStorage)
+            await loadDataFromLocalStorage();
             
             // localStorage 변경 감지 (project_register.html에서 엑셀 업로드 시 자동 반영)
-            window.addEventListener('storage', function(e) {
+            window.addEventListener('storage', async function(e) {
                 if (e.key === 'projectSchedules') {
-                    loadDataFromLocalStorage();
+                    await loadDataFromLocalStorage();
                 }
             });
+            
+            // 주기적으로 체크 (JSON 파일 업데이트 감지)
+            setInterval(async function() {
+                await loadDataFromLocalStorage();
+            }, 3000);
             
             // 주기적으로 체크 (같은 탭에서도 업데이트)
             setInterval(function() {
