@@ -242,43 +242,34 @@
             justify-content: center;
             font-size: 0.7rem;
             color: #64748b;
+            transition: all 0.2s;
         }
 
         .date-cell.has-tasks {
             background: white;
         }
 
+        .date-cell.category-planning {
+            background: var(--task-blue-bg) !important;
+            border-color: var(--task-blue-border);
+            color: var(--task-blue-text);
+        }
+
+        .date-cell.category-development {
+            background: var(--task-green-bg) !important;
+            border-color: var(--task-green-border);
+            color: var(--task-green-text);
+        }
+
+        .date-cell.category-design {
+            background: var(--task-yellow-bg) !important;
+            border-color: var(--task-yellow-border);
+            color: var(--task-yellow-text);
+        }
+
         .date-number {
             font-weight: 600;
             margin-bottom: 2px;
-        }
-
-        .category-blocks {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 2px;
-            justify-content: center;
-            width: 100%;
-            padding: 2px;
-        }
-
-        .category-block {
-            width: 8px;
-            height: 8px;
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
-
-        .category-block.planning {
-            background: var(--task-blue-border);
-        }
-
-        .category-block.development {
-            background: var(--task-green-border);
-        }
-
-        .category-block.design {
-            background: var(--task-yellow-border);
         }
 
         .weekday-header {
@@ -647,21 +638,13 @@
                 cell.className = 'date-cell';
                 if (block.category) {
                     cell.classList.add('has-tasks');
+                    cell.classList.add(`category-${block.category}`);
                 }
 
                 const dateNumber = document.createElement('div');
                 dateNumber.className = 'date-number';
                 dateNumber.textContent = block.date;
                 cell.appendChild(dateNumber);
-
-                if (block.category) {
-                    const categoryBlocks = document.createElement('div');
-                    categoryBlocks.className = 'category-blocks';
-                    const blockEl = document.createElement('div');
-                    blockEl.className = `category-block ${block.category}`;
-                    categoryBlocks.appendChild(blockEl);
-                    cell.appendChild(categoryBlocks);
-                }
 
                 dateGrid.appendChild(cell);
             });
