@@ -123,9 +123,14 @@
 
         /* --- Main Calendar Card --- */
         .content-area {
-            flex: 1; background: white; border-radius: 12px;
-            border: 1px solid var(--border-color); display: flex;
-            flex-direction: column; overflow: hidden; /* 스크롤은 calendar-grid에서 처리 */
+            flex: 1;
+            min-width: 0; /* flex item이 줄어들 수 있도록 허용 */
+            background: white; 
+            border-radius: 12px;
+            border: 1px solid var(--border-color); 
+            display: flex;
+            flex-direction: column; 
+            overflow: hidden; /* 스크롤은 calendar-grid에서 처리 */
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             position: relative; /* fixed 툴팁의 기준점 */
             z-index: 1; /* 분류 팝업보다 낮게 설정 */
@@ -612,7 +617,6 @@
                         <button class="legend-btn">🎨 분류 (Legend)</button>
                         <!-- 팝업은 JavaScript에서 body에 직접 append됨 -->
                     </div>
-                </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1;">
                     <button id="prev-btn" onclick="navigate(-1)" style="background:#f1f5f9;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:16px;color:#475569;display:none;position:relative;z-index:1;">◀</button>
