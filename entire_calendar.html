@@ -482,14 +482,25 @@
         .task.yellow { background: var(--task-yellow-bg); color: var(--task-yellow-text); border-left-color: var(--task-yellow-border); }
         .task.hidden { display: none !important; }
         
-        /* 등록된 테스크 스타일 (회색, 불투명) */
+        /* 등록된 테스크 스타일 (분류별 색상 유지, 약간 투명하게) */
         .task.scheduled,
         .month-task-bar.scheduled {
-            background: #9ca3af !important;
-            color: #ffffff !important;
-            border-left-color: #6b7280 !important;
-            opacity: 1 !important;
+            opacity: 0.7 !important; /* 등록된 스케줄은 약간 투명하게 */
+            position: relative;
         }
+        
+        /* 등록된 스케줄 표시를 위한 체크 아이콘 추가 (선택사항) */
+        .month-task-bar.scheduled::after {
+            content: '✓';
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+            color: currentColor;
+            opacity: 0.8;
+        }
+        
         /* 툴팁은 부모의 opacity를 상속받지 않도록 */
         .task.scheduled .task-detail-tooltip {
             opacity: 1 !important;
@@ -511,25 +522,26 @@
             isolation: isolate;
         }
         
+        /* 등록된 스케줄도 분류별 색상 유지 (기존 색상 클래스가 적용됨) */
         .task.scheduled.blue,
         .month-task-bar.scheduled.blue {
-            background: #9ca3af !important;
-            color: #ffffff !important;
-            border-left-color: #6b7280 !important;
+            background: var(--task-blue-bg) !important;
+            color: var(--task-blue-text) !important;
+            border-left-color: var(--task-blue-border) !important;
         }
         
         .task.scheduled.green,
         .month-task-bar.scheduled.green {
-            background: #9ca3af !important;
-            color: #ffffff !important;
-            border-left-color: #6b7280 !important;
+            background: var(--task-green-bg) !important;
+            color: var(--task-green-text) !important;
+            border-left-color: var(--task-green-border) !important;
         }
         
         .task.scheduled.yellow,
         .month-task-bar.scheduled.yellow {
-            background: #9ca3af !important;
-            color: #ffffff !important;
-            border-left-color: #6b7280 !important;
+            background: var(--task-yellow-bg) !important;
+            color: var(--task-yellow-text) !important;
+            border-left-color: var(--task-yellow-border) !important;
         }
 
         /* --- Sidebar --- */
@@ -1973,7 +1985,8 @@
                             endDate: rangeEnd.date,
                             startDateStr: rangeStart.dateStr,
                             endDateStr: rangeEnd.dateStr,
-                            totalHours: rangeStart.totalHours
+                            totalHours: rangeStart.totalHours,
+                            isUserScheduled: rangeStart.isUserScheduled || false
                         });
                         
                         rangeStart = group[i];
@@ -1991,7 +2004,8 @@
                     endDate: rangeEnd.date,
                     startDateStr: rangeStart.dateStr,
                     endDateStr: rangeEnd.dateStr,
-                    totalHours: rangeStart.totalHours
+                    totalHours: rangeStart.totalHours,
+                    isUserScheduled: rangeStart.isUserScheduled || false
                 });
             });
             

@@ -12,6 +12,16 @@
             --border-color: #e5e7eb;
             --primary-blue: #2563eb;
             --text-dark: #1e293b;
+            /* 카테고리 색상 (users-data.js와 통일) */
+            --task-blue-bg: #dbeafe;
+            --task-blue-text: #1e40af;
+            --task-blue-border: #3b82f6;
+            --task-green-bg: #dcfce7;
+            --task-green-text: #166534;
+            --task-green-border: #22c55e;
+            --task-yellow-bg: #fef9c3;
+            --task-yellow-text: #854d0e;
+            --task-yellow-border: #eab308;
         }
 
         * {
@@ -151,15 +161,15 @@
         }
 
         .task-block-group.planning {
-            border-left-color: #3b82f6;
+            border-left-color: var(--task-blue-border);
         }
 
         .task-block-group.development {
-            border-left-color: #22c55e;
+            border-left-color: var(--task-green-border);
         }
 
         .task-block-group.design {
-            border-left-color: #eab308;
+            border-left-color: var(--task-yellow-border);
         }
 
         .task-block-header {
@@ -207,39 +217,39 @@
         }
 
         .task-block.planning {
-            background: #dbeafe;
-            border-color: #3b82f6;
-            color: #1e40af;
+            background: var(--task-blue-bg);
+            border-color: var(--task-blue-border);
+            color: var(--task-blue-text);
         }
 
         .task-block.planning.scheduled-active {
-            background: #3b82f6 !important;
-            border-color: #2563eb !important;
+            background: var(--task-blue-border) !important;
+            border-color: var(--primary-blue) !important;
             color: white !important;
             opacity: 1;
         }
 
         .task-block.development {
-            background: #dcfce7;
-            border-color: #22c55e;
-            color: #166534;
+            background: var(--task-green-bg);
+            border-color: var(--task-green-border);
+            color: var(--task-green-text);
         }
 
         .task-block.development.scheduled-active {
-            background: #22c55e !important;
+            background: var(--task-green-border) !important;
             border-color: #16a34a !important;
             color: white !important;
             opacity: 1;
         }
 
         .task-block.design {
-            background: #fef9c3;
-            border-color: #eab308;
-            color: #854d0e;
+            background: var(--task-yellow-bg);
+            border-color: var(--task-yellow-border);
+            color: var(--task-yellow-text);
         }
 
         .task-block.design.scheduled-active {
-            background: #eab308 !important;
+            background: var(--task-yellow-border) !important;
             border-color: #ca8a04 !important;
             color: white !important;
             opacity: 1;
@@ -442,6 +452,7 @@
         }
     </style>
     <!-- 프로젝트 데이터 JavaScript 파일 로드 -->
+    <script src="users-data.js"></script>
     <script src="projects-data.js"></script>
 </head>
 <body>
