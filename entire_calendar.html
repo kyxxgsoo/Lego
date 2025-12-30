@@ -18,6 +18,11 @@
             --task-blue-bg: #dbeafe; --task-blue-text: #1e40af; --task-blue-border: #3b82f6;
             --task-green-bg: #dcfce7; --task-green-text: #166534; --task-green-border: #22c55e;
             --task-yellow-bg: #fef9c3; --task-yellow-text: #854d0e; --task-yellow-border: #eab308;
+            --task-purple-bg: #f3e8ff; --task-purple-text: #6b21a8; --task-purple-border: #a855f7;
+            --task-orange-bg: #ffedd5; --task-orange-text: #9a3412; --task-orange-border: #f97316;
+            --task-pink-bg: #fce7f3; --task-pink-text: #9f1239; --task-pink-border: #ec4899;
+            --task-cyan-bg: #cffafe; --task-cyan-text: #164e63; --task-cyan-border: #06b6d4;
+            --task-indigo-bg: #e0e7ff; --task-indigo-text: #3730a3; --task-indigo-border: #6366f1;
         }
 
         body {
@@ -312,6 +317,31 @@
             color: var(--task-yellow-text); 
             border-left-color: var(--task-yellow-border); 
         }
+        .month-task-bar.purple { 
+            background: var(--task-purple-bg); 
+            color: var(--task-purple-text); 
+            border-left-color: var(--task-purple-border); 
+        }
+        .month-task-bar.orange { 
+            background: var(--task-orange-bg); 
+            color: var(--task-orange-text); 
+            border-left-color: var(--task-orange-border); 
+        }
+        .month-task-bar.pink { 
+            background: var(--task-pink-bg); 
+            color: var(--task-pink-text); 
+            border-left-color: var(--task-pink-border); 
+        }
+        .month-task-bar.cyan { 
+            background: var(--task-cyan-bg); 
+            color: var(--task-cyan-text); 
+            border-left-color: var(--task-cyan-border); 
+        }
+        .month-task-bar.indigo { 
+            background: var(--task-indigo-bg); 
+            color: var(--task-indigo-text); 
+            border-left-color: var(--task-indigo-border); 
+        }
         
         /* 사람별 업무 툴팁 */
         .task-tooltip {
@@ -480,6 +510,11 @@
         .task.blue { background: var(--task-blue-bg); color: var(--task-blue-text); border-left-color: var(--task-blue-border); }
         .task.green { background: var(--task-green-bg); color: var(--task-green-text); border-left-color: var(--task-green-border); }
         .task.yellow { background: var(--task-yellow-bg); color: var(--task-yellow-text); border-left-color: var(--task-yellow-border); }
+        .task.purple { background: var(--task-purple-bg); color: var(--task-purple-text); border-left-color: var(--task-purple-border); }
+        .task.orange { background: var(--task-orange-bg); color: var(--task-orange-text); border-left-color: var(--task-orange-border); }
+        .task.pink { background: var(--task-pink-bg); color: var(--task-pink-text); border-left-color: var(--task-pink-border); }
+        .task.cyan { background: var(--task-cyan-bg); color: var(--task-cyan-text); border-left-color: var(--task-cyan-border); }
+        .task.indigo { background: var(--task-indigo-bg); color: var(--task-indigo-text); border-left-color: var(--task-indigo-border); }
         .task.hidden { display: none !important; }
         
         /* 등록된 테스크 스타일 (분류별 색상 유지, 약간 투명하게) */
@@ -542,6 +577,41 @@
             background: var(--task-yellow-bg) !important;
             color: var(--task-yellow-text) !important;
             border-left-color: var(--task-yellow-border) !important;
+        }
+        
+        .task.scheduled.purple,
+        .month-task-bar.scheduled.purple {
+            background: var(--task-purple-bg) !important;
+            color: var(--task-purple-text) !important;
+            border-left-color: var(--task-purple-border) !important;
+        }
+        
+        .task.scheduled.orange,
+        .month-task-bar.scheduled.orange {
+            background: var(--task-orange-bg) !important;
+            color: var(--task-orange-text) !important;
+            border-left-color: var(--task-orange-border) !important;
+        }
+        
+        .task.scheduled.pink,
+        .month-task-bar.scheduled.pink {
+            background: var(--task-pink-bg) !important;
+            color: var(--task-pink-text) !important;
+            border-left-color: var(--task-pink-border) !important;
+        }
+        
+        .task.scheduled.cyan,
+        .month-task-bar.scheduled.cyan {
+            background: var(--task-cyan-bg) !important;
+            color: var(--task-cyan-text) !important;
+            border-left-color: var(--task-cyan-border) !important;
+        }
+        
+        .task.scheduled.indigo,
+        .month-task-bar.scheduled.indigo {
+            background: var(--task-indigo-bg) !important;
+            color: var(--task-indigo-text) !important;
+            border-left-color: var(--task-indigo-border) !important;
         }
 
         /* --- Sidebar --- */
@@ -889,10 +959,20 @@
             if (!대분류) return 'planning';
             if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영')) {
                 return 'planning';
-            } else if (대분류.includes('개발') || 대분류.includes('재무')) {
+            } else if (대분류.includes('개발') || 대분류.includes('AI')) {
                 return 'development';
             } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
                 return 'design';
+            } else if (대분류.includes('마케팅')) {
+                return 'marketing';
+            } else if (대분류.includes('운영')) {
+                return 'operation';
+            } else if (대분류.includes('QA') || 대분류.includes('테스트')) {
+                return 'qa';
+            } else if (대분류.includes('재무')) {
+                return 'finance';
+            } else if (대분류.includes('인사')) {
+                return 'hr';
             }
             return 'planning';
         }
@@ -928,17 +1008,10 @@
             return null;
         }
 
-        // 카테고리 매핑 (대분류 -> 소분류)
+        // 카테고리 매핑 (대분류 -> 소분류) - getCategoryFromMajor와 동일하게
         function getCategoryFromTask(task) {
             const 대분류 = task.대분류 || task.task?.대분류 || '';
-            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영')) {
-                return 'planning';
-            } else if (대분류.includes('개발') || 대분류.includes('재무')) {
-                return 'development';
-            } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
-                return 'design';
-            }
-            return 'planning'; // 기본값
+            return getCategoryFromMajor(대분류);
         }
 
         // localStorage 스케줄을 TASK_ASSIGNMENTS 형식으로 변환
@@ -2459,6 +2532,11 @@
                     <div class="legend-item"><div class="dot" style="background:var(--task-blue-border)"></div> 기획 (Planning)</div>
                     <div class="legend-item"><div class="dot" style="background:var(--task-green-border)"></div> 개발 (Development)</div>
                     <div class="legend-item"><div class="dot" style="background:var(--task-yellow-border)"></div> 디자인 (Design)</div>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-purple-border)"></div> 마케팅 (Marketing)</div>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-orange-border)"></div> 운영 (Operation)</div>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-pink-border)"></div> QA/테스트 (QA/Test)</div>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-cyan-border)"></div> 재무 (Finance)</div>
+                    <div class="legend-item"><div class="dot" style="background:var(--task-indigo-border)"></div> 인사 (HR)</div>
                     <div style="margin-top:12px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:0.75rem;color:#64748b;line-height:1.4;">
                         * 한 사람이 여러 소분류 업무를 수행할 수 있습니다.
                     </div>
@@ -2644,8 +2722,14 @@
                     dayCount++;
                 }
                 
-                // 다음 테스크는 1일 후부터 시작 (겹치지 않도록)
-                dateOffset += dayCount + 1;
+                // 다음 테스크는 적절히 분산 배치
+                // 같은 날짜에 여러 테스크가 배치되어 다양한 색상을 볼 수 있도록
+                // 하지만 너무 많이 겹치지 않도록 최대 5개까지만 같은 날짜에 배치
+                if (dateOffset % 5 === 0) {
+                    dateOffset += 1; // 5개마다 1일씩 이동
+                } else {
+                    dateOffset += 0; // 같은 날짜에 배치하여 다양한 색상 표시
+                }
             });
             
             // 기존 일정과 새 일정 병합

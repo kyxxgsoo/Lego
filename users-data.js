@@ -138,6 +138,31 @@ const USERS_DATA = {
       "name": "디자인",
       "color": "yellow",
       "colorCode": "#eab308"
+    },
+    "marketing": {
+      "name": "마케팅",
+      "color": "purple",
+      "colorCode": "#a855f7"
+    },
+    "operation": {
+      "name": "운영",
+      "color": "orange",
+      "colorCode": "#f97316"
+    },
+    "qa": {
+      "name": "QA/테스트",
+      "color": "pink",
+      "colorCode": "#ec4899"
+    },
+    "finance": {
+      "name": "재무",
+      "color": "cyan",
+      "colorCode": "#06b6d4"
+    },
+    "hr": {
+      "name": "인사",
+      "color": "indigo",
+      "colorCode": "#6366f1"
     }
   }
 };

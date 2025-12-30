@@ -17,6 +17,11 @@
             --task-blue-bg: #dbeafe; --task-blue-text: #1e40af; --task-blue-border: #3b82f6;
             --task-green-bg: #dcfce7; --task-green-text: #166534; --task-green-border: #22c55e;
             --task-yellow-bg: #fef9c3; --task-yellow-text: #854d0e; --task-yellow-border: #eab308;
+            --task-purple-bg: #f3e8ff; --task-purple-text: #6b21a8; --task-purple-border: #a855f7;
+            --task-orange-bg: #ffedd5; --task-orange-text: #9a3412; --task-orange-border: #f97316;
+            --task-pink-bg: #fce7f3; --task-pink-text: #9f1239; --task-pink-border: #ec4899;
+            --task-cyan-bg: #cffafe; --task-cyan-text: #164e63; --task-cyan-border: #06b6d4;
+            --task-indigo-bg: #e0e7ff; --task-indigo-text: #3730a3; --task-indigo-border: #6366f1;
         }
 
         * {
@@ -267,6 +272,36 @@
             color: var(--task-yellow-text);
         }
 
+        .date-cell.category-marketing {
+            background: var(--task-purple-bg) !important;
+            border-color: var(--task-purple-border);
+            color: var(--task-purple-text);
+        }
+
+        .date-cell.category-operation {
+            background: var(--task-orange-bg) !important;
+            border-color: var(--task-orange-border);
+            color: var(--task-orange-text);
+        }
+
+        .date-cell.category-qa {
+            background: var(--task-pink-bg) !important;
+            border-color: var(--task-pink-border);
+            color: var(--task-pink-text);
+        }
+
+        .date-cell.category-finance {
+            background: var(--task-cyan-bg) !important;
+            border-color: var(--task-cyan-border);
+            color: var(--task-cyan-text);
+        }
+
+        .date-cell.category-hr {
+            background: var(--task-indigo-bg) !important;
+            border-color: var(--task-indigo-border);
+            color: var(--task-indigo-text);
+        }
+
         .date-number {
             font-weight: 600;
             margin-bottom: 2px;
@@ -399,14 +434,184 @@
         // 카테고리 매핑
         function getCategoryFromMajor(대분류) {
             if (!대분류) return 'planning';
-            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영') || 대분류.includes('재무')) {
+            if (대분류.includes('기획') || 대분류.includes('행사') || 대분류.includes('경영')) {
                 return 'planning';
             } else if (대분류.includes('개발') || 대분류.includes('AI')) {
                 return 'development';
             } else if (대분류.includes('디자인') || 대분류.includes('시각')) {
                 return 'design';
+            } else if (대분류.includes('마케팅')) {
+                return 'marketing';
+            } else if (대분류.includes('운영')) {
+                return 'operation';
+            } else if (대분류.includes('QA') || 대분류.includes('테스트')) {
+                return 'qa';
+            } else if (대분류.includes('재무')) {
+                return 'finance';
+            } else if (대분류.includes('인사')) {
+                return 'hr';
             }
             return 'planning';
+        }
+
+        // entire_calendar.html과 동일한 일정 생성 함수 사용
+        function createSampleSchedulesForEntireCalendar() {
+            // PROJECTS_DATA가 로드되지 않았으면 대기
+            if (typeof PROJECTS_DATA === 'undefined' || !PROJECTS_DATA.tasks) {
+                console.warn('⚠️ PROJECTS_DATA가 아직 로드되지 않았습니다.');
+                return;
+            }
+            
+            const baseDate = new Date('2025-12-01');
+            const schedules = [];
+            
+            // 사용자 매핑 (이름 -> user ID)
+            const userMapping = {};
+            if (typeof USERS_DATA !== 'undefined') {
+                USERS_DATA.users.forEach(user => {
+                    userMapping[user.name] = user.id;
+                });
+            }
+            
+            // 기존 일정 로드 (중복 방지용)
+            const existing = localStorage.getItem('projectSchedules');
+            const existingSchedules = new Set();
+            if (existing) {
+                try {
+                    const data = JSON.parse(existing);
+                    if (data.schedules && Array.isArray(data.schedules)) {
+                        data.schedules.forEach(s => {
+                            // taskId + userName + startDate + startTime으로 고유 키 생성
+                            const key = `${s.taskId}-${s.userName || s.user}-${s.startDate}-${s.startTime}`;
+                            existingSchedules.add(key);
+                        });
+                        console.log(`📋 기존 일정 ${data.schedules.length}개 발견, 중복 체크 진행`);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 기존 일정 파싱 오류:', e);
+                }
+            }
+            
+            // PROJECTS_DATA의 모든 테스크 중 할당시간이 있는 것만 필터링
+            const tasksWithAssignment = PROJECTS_DATA.tasks.filter(task => 
+                task.할당시간 && task.할당시간 > 0 && task.이름 && task.이름.trim() !== ''
+            );
+            
+            console.log(`📋 할당된 테스크 발견: ${tasksWithAssignment.length}개`);
+            
+            let dateOffset = 0;
+            let newScheduleCount = 0;
+            
+            tasksWithAssignment.forEach((task, index) => {
+                const userName = task.이름;
+                const userId = userMapping[userName];
+                
+                if (!userId) {
+                    console.warn(`⚠️ 사용자를 찾을 수 없습니다: ${userName} (테스크: ${task.id})`);
+                    return;
+                }
+                
+                const assignedHours = task.할당시간;
+                const standardHours = task.기준시간 || assignedHours;
+                
+                // 일수 계산 (하루 최대 8시간 기준)
+                const days = Math.max(1, Math.ceil(assignedHours / 8));
+                const hoursPerDay = Math.ceil(assignedHours / days);
+                
+                // 날짜 분산 (다양한 날짜에 배치)
+                const startDate = new Date(baseDate);
+                startDate.setDate(baseDate.getDate() + dateOffset);
+                
+                let remainingHours = assignedHours;
+                let dayCount = 0;
+                
+                for (let day = 0; day < days && remainingHours > 0; day++) {
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + day);
+                    
+                    // 주말 제외
+                    const dayOfWeek = currentDate.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        continue;
+                    }
+                    
+                    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+                    
+                    // 시간 계산 (09:00부터 시작, 최대 18:00까지)
+                    const dayHours = Math.min(hoursPerDay, remainingHours, 8);
+                    const startHour = 9;
+                    const endHour = Math.min(startHour + dayHours, 18);
+                    const startTime = `${String(startHour).padStart(2, '0')}:00`;
+                    const endTime = `${String(endHour).padStart(2, '0')}:00`;
+                    
+                    // 중복 체크
+                    const scheduleKey = `${task.id}-${userName}-${dateStr}-${startTime}`;
+                    if (existingSchedules.has(scheduleKey)) {
+                        console.log(`⏭️ 중복 일정 스킵: ${scheduleKey}`);
+                        continue;
+                    }
+                    
+                    schedules.push({
+                        taskId: task.id,
+                        userName: userName,
+                        user: userId,
+                        startDate: dateStr,
+                        endDate: dateStr,
+                        startTime: startTime,
+                        endTime: endTime,
+                        assignedHours: dayHours,
+                        task: {
+                            소분류: task.소분류 || task.중분류 || '테스크',
+                            중분류: task.중분류 || '작업',
+                            대분류: task.대분류 || '기획관리',
+                            할당시간: dayHours,
+                            기준시간: standardHours,
+                            비고: task.비고 || '',
+                            projectId: task.projectId || 'project-unknown',
+                            사업명: task.사업명 || '프로젝트'
+                        }
+                    });
+                    
+                    existingSchedules.add(scheduleKey);
+                    newScheduleCount++;
+                    remainingHours -= dayHours;
+                    dayCount++;
+                }
+                
+                // 다음 테스크는 적절히 분산 배치
+                // 같은 날짜에 여러 테스크가 배치되어 다양한 색상을 볼 수 있도록
+                // 하지만 너무 많이 겹치지 않도록 최대 5개까지만 같은 날짜에 배치
+                if (dateOffset % 5 === 0) {
+                    dateOffset += 1; // 5개마다 1일씩 이동
+                } else {
+                    dateOffset += 0; // 같은 날짜에 배치하여 다양한 색상 표시
+                }
+            });
+            
+            // 기존 일정과 새 일정 병합
+            let allSchedules = [];
+            if (existing) {
+                try {
+                    const data = JSON.parse(existing);
+                    if (data.schedules && Array.isArray(data.schedules)) {
+                        allSchedules = data.schedules;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 기존 일정 병합 오류:', e);
+                }
+            }
+            
+            // 새 일정 추가
+            allSchedules = allSchedules.concat(schedules);
+            
+            // localStorage에 저장
+            const scheduleData = {
+                schedules: allSchedules,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            localStorage.setItem('projectSchedules', JSON.stringify(scheduleData));
+            console.log(`✅ 샘플 일정 생성 완료: 새 일정 ${newScheduleCount}개 추가 (전체 ${allSchedules.length}개)`);
         }
 
         // 데이터 로드
@@ -435,7 +640,8 @@
                 });
             }
 
-            // 스케줄 데이터 로드
+            // 스케줄 데이터 로드 (entire_calendar.html에서 생성된 일정 사용)
+            // 일정 생성은 entire_calendar.html에서만 수행하고, 여기서는 읽기만 함
             await loadSchedulesFromLocalStorage();
 
             // 프로젝트 선택 옵션 생성
@@ -465,16 +671,21 @@
             renderTeamGrid();
         }
 
-        // localStorage에서 스케줄 로드
+        // localStorage에서 스케줄 로드 (entire_calendar.html과 동일한 로직)
         async function loadSchedulesFromLocalStorage() {
             const saved = localStorage.getItem('projectSchedules');
-            if (!saved) return;
+            if (!saved) {
+                console.log('⚠️ projectSchedules가 없습니다.');
+                return;
+            }
 
             try {
                 const data = JSON.parse(saved);
                 const schedules = data.schedules || [];
 
-                // 사용자 매핑
+                console.log('📥 저장된 스케줄 로드:', schedules.length, '개');
+
+                // 사용자 매핑 (이름 -> user ID)
                 const userMapping = {};
                 if (typeof USERS_DATA !== 'undefined') {
                     USERS_DATA.users.forEach(user => {
@@ -482,16 +693,50 @@
                     });
                 }
 
+                // 사용자 이름을 user ID로 매핑하는 헬퍼 함수
+                function getUserByName(userName) {
+                    for (const [userId, userInfo] of Object.entries(USERS)) {
+                        if (userInfo.name === userName) {
+                            return userId;
+                        }
+                    }
+                    return null;
+                }
+
+                // 카테고리 매핑 함수 (entire_calendar.html의 getCategoryFromTask와 동일)
+                function getCategoryFromTask(task) {
+                    const 대분류 = task.대분류 || task.task?.대분류 || '';
+                    return getCategoryFromMajor(대분류);
+                }
+
                 TASK_ASSIGNMENTS = [];
+                let addedCount = 0;
+                
                 schedules.forEach(schedule => {
                     const task = schedule.task || {};
                     const userName = schedule.userName || schedule.user;
-                    const userId = userMapping[userName] || schedule.user;
+                    const userId = userMapping[userName] || getUserByName(userName);
 
-                    if (!userId) return;
+                    if (!userId) {
+                        // 사용자를 찾을 수 없는 경우 경고만 출력하고 스킵
+                        console.warn('⚠️ 사용자를 찾을 수 없습니다:', userName, '- 스케줄이 스킵됩니다.');
+                        return;
+                    }
 
-                    const category = getCategoryFromMajor(task.대분류 || '');
+                    // entire_calendar.html과 동일한 카테고리 매핑 사용
+                    const category = getCategoryFromTask(task);
                     const hours = schedule.assignedHours || calculateHours(schedule.startTime, schedule.endTime, schedule.startDate, schedule.endDate);
+
+                    // TASKS에 추가 (entire_calendar.html과 동일한 로직)
+                    if (!TASKS[schedule.taskId]) {
+                        TASKS[schedule.taskId] = {
+                            taskId: schedule.taskId,
+                            title: task.소분류 || task.중분류 || task.title || '테스크',
+                            category: category,
+                            totalHours: task.할당시간 || task.기준시간 || 0,
+                            projectId: task.projectId || schedule.task?.projectId || 'project-unknown'
+                        };
+                    }
 
                     TASK_ASSIGNMENTS.push({
                         taskId: schedule.taskId,
@@ -502,9 +747,14 @@
                         endTime: schedule.endTime,
                         assignedHours: hours,
                         category: category,
-                        projectId: task.projectId || schedule.task?.projectId || 'project-unknown'
+                        projectId: task.projectId || schedule.task?.projectId || 'project-unknown',
+                        task: task // task 객체도 함께 저장
                     });
+                    
+                    addedCount++;
                 });
+
+                console.log('✅ 스케줄 로드 완료 - TASK_ASSIGNMENTS:', TASK_ASSIGNMENTS.length, '개 (새로 추가:', addedCount, '개)');
             } catch (error) {
                 console.error('스케줄 로드 오류:', error);
             }
@@ -517,21 +767,47 @@
             return (end - start) / (1000 * 60 * 60);
         }
 
-        // 특정 날짜의 스케줄 가져오기
+        // 특정 날짜의 스케줄 가져오기 (entire_calendar.html과 동일한 로직)
         function getSchedulesForDate(dateStr, userId, projectId) {
-            return TASK_ASSIGNMENTS.filter(assignment => {
-                if (userId && assignment.user !== userId) return false;
-                if (projectId && projectId !== 'all' && assignment.projectId !== projectId) return false;
-
+            const schedules = [];
+            
+            TASK_ASSIGNMENTS.forEach(assignment => {
+                // userId 필터링
+                if (userId && assignment.user !== userId) return;
+                
+                // projectId 필터링
+                if (projectId && projectId !== 'all') {
+                    const assignmentProjectId = assignment.projectId || assignment.task?.projectId;
+                    if (assignmentProjectId !== projectId) return;
+                }
+                
+                // 날짜가 범위 안에 있는지 확인 (entire_calendar.html과 동일)
                 const targetDate = new Date(dateStr);
                 const startDate = new Date(assignment.startDate);
                 const endDate = new Date(assignment.endDate);
-
-                return targetDate >= startDate && targetDate <= endDate;
+                
+                if (targetDate >= startDate && targetDate <= endDate) {
+                    // entire_calendar.html과 동일: TASKS에서 카테고리 가져오기
+                    const task = TASKS[assignment.taskId];
+                    if (!task) return;
+                    
+                    // 카테고리는 TASKS에서 가져옴 (entire_calendar.html과 동일)
+                    const category = task.category || assignment.category || 'planning';
+                    
+                    schedules.push({
+                        taskId: assignment.taskId,
+                        user: assignment.user,
+                        category: category,
+                        assignedHours: assignment.assignedHours || 0,
+                        task: assignment.task || {}
+                    });
+                }
             });
+            
+            return schedules;
         }
 
-        // 특정 날짜의 지배적 카테고리 찾기
+        // 특정 날짜의 지배적 카테고리 찾기 (entire_calendar.html과 동일한 로직)
         function getDominantCategory(dateStr, userId, projectId) {
             const schedules = getSchedulesForDate(dateStr, userId, projectId);
             if (schedules.length === 0) return null;
@@ -539,7 +815,25 @@
             // 카테고리별 시간 합계
             const categoryHours = {};
             schedules.forEach(schedule => {
-                const category = schedule.category || 'planning';
+                // getSchedulesForDate에서 이미 category를 설정했으므로 그대로 사용
+                let category = schedule.category;
+                
+                // category가 없으면 fallback
+                if (!category) {
+                    const task = schedule.task || {};
+                    const 대분류 = task.대분류 || '';
+                    if (대분류) {
+                        category = getCategoryFromMajor(대분류);
+                    } else if (schedule.taskId && TASKS[schedule.taskId]) {
+                        category = TASKS[schedule.taskId].category;
+                    } else {
+                        category = 'planning'; // 기본값
+                    }
+                }
+                
+                // 카테고리 값 정규화 (일관성 유지)
+                if (category === 'operations') category = 'operation';
+                
                 const hours = schedule.assignedHours || 0;
                 categoryHours[category] = (categoryHours[category] || 0) + hours;
             });
