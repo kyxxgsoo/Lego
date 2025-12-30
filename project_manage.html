@@ -708,9 +708,21 @@
                     // 각 프로젝트의 통계 계산
                     Object.keys(projects).forEach(projectName => {
                         const project = projects[projectName];
+                        
+                        // 소분류별로 그룹화하여 기준시간은 한 번만 계산
+                        const subCategoryMap = new Map();
                         project.tasks.forEach(task => {
-                            project.totalStandardHours += task.기준시간 || 0;
+                            const subCategoryKey = `${task.대분류}-${task.중분류}-${task.소분류}`;
+                            
+                            // 기준시간은 소분류별로 한 번만 추가
+                            if (!subCategoryMap.has(subCategoryKey)) {
+                                subCategoryMap.set(subCategoryKey, true);
+                                project.totalStandardHours += task.기준시간 || 0;
+                            }
+                            
+                            // 할당시간은 모든 테스크의 합계
                             project.totalAssignedHours += task.할당시간 || 0;
+                            
                             if (task.이름) {
                                 project.members.add(task.이름);
                             }
@@ -724,6 +736,7 @@
                     }
 
                     // 프로젝트별로 그룹화
+                    const projectSubCategoryMap = new Map();
                     projectData.forEach(task => {
                         const projectName = task.사업명 || '미분류 프로젝트';
                         if (!projects[projectName]) {
@@ -734,10 +747,21 @@
                                 totalAssignedHours: 0,
                                 members: new Set()
                             };
+                            projectSubCategoryMap.set(projectName, new Map());
                         }
                         projects[projectName].tasks.push(task);
-                        projects[projectName].totalStandardHours += task.기준시간 || 0;
+                        
+                        // 소분류별로 그룹화하여 기준시간은 한 번만 계산
+                        const subCategoryKey = `${task.대분류}-${task.중분류}-${task.소분류}`;
+                        const subCategoryMap = projectSubCategoryMap.get(projectName);
+                        if (!subCategoryMap.has(subCategoryKey)) {
+                            subCategoryMap.set(subCategoryKey, true);
+                            projects[projectName].totalStandardHours += task.기준시간 || 0;
+                        }
+                        
+                        // 할당시간은 모든 테스크의 합계
                         projects[projectName].totalAssignedHours += task.할당시간 || 0;
+                        
                         if (task.이름) {
                             projects[projectName].members.add(task.이름);
                         }

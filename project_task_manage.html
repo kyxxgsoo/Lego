@@ -1320,8 +1320,9 @@
                         };
                     } else {
                         // localStorage 데이터에 PROJECTS_DATA의 projects와 tasks 병합 (schedules는 localStorage 유지)
-                        data.projects = data.projects || PROJECTS_DATA.projects || [];
-                        data.tasks = data.tasks || PROJECTS_DATA.tasks || [];
+                        // tasks는 항상 PROJECTS_DATA에서 가져와서 최신 기준시간 반영
+                        data.projects = PROJECTS_DATA.projects || data.projects || [];
+                        data.tasks = PROJECTS_DATA.tasks || data.tasks || [];
                         // schedules는 localStorage의 것을 유지 (등록된 일정이 있으므로)
                         data.schedules = data.schedules || [];
                     }
@@ -1377,8 +1378,9 @@
                         };
                     } else {
                         // localStorage 데이터에 PROJECTS_DATA의 projects와 tasks 병합 (schedules는 localStorage 유지)
-                        data.projects = data.projects || PROJECTS_DATA.projects || [];
-                        data.tasks = data.tasks || PROJECTS_DATA.tasks || [];
+                        // tasks는 항상 PROJECTS_DATA에서 가져와서 최신 기준시간 반영
+                        data.projects = PROJECTS_DATA.projects || data.projects || [];
+                        data.tasks = PROJECTS_DATA.tasks || data.tasks || [];
                         // schedules는 localStorage의 것을 유지 (등록된 일정이 있으므로)
                         data.schedules = data.schedules || [];
                     }
