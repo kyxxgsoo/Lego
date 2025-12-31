@@ -283,6 +283,157 @@
             opacity: 0.7;
         }
 
+        /* 미등록 테스크 블록 클릭 가능 스타일 */
+        .task-block.clickable {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .task-block.clickable:hover {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+        }
+
+        .task-block.clickable::after {
+            content: '➕';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            font-size: 0.6rem;
+            opacity: 0.7;
+        }
+
+        /* 일정 등록 모달 */
+        .schedule-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .schedule-modal.active {
+            display: flex;
+        }
+
+        .schedule-modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .schedule-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .schedule-modal-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: var(--text-dark);
+        }
+
+        .schedule-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .schedule-modal-close:hover {
+            background: #f1f5f9;
+            color: var(--text-dark);
+        }
+
+        .schedule-form-group {
+            margin-bottom: 20px;
+        }
+
+        .schedule-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+
+        .schedule-form-group input,
+        .schedule-form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+
+        .schedule-form-group input:focus,
+        .schedule-form-group select:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        .schedule-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .schedule-modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .schedule-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .schedule-btn-primary {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .schedule-btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .schedule-btn-secondary {
+            background: #f1f5f9;
+            color: var(--text-dark);
+        }
+
+        .schedule-btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
         .task-block-tooltip {
             position: absolute;
             bottom: 100%;
@@ -833,11 +984,12 @@
                     const category = getCategoryFromMajor(taskGroup.대분류);
                     const totalBlocks = taskGroup.기준시간;
                     
-                    // 할당된 블록 수 계산
+                    // 할당된 블록 수 계산 (할당시간의 합)
                     let assignedBlocks = taskGroup.할당.reduce((sum, a) => sum + a.할당시간, 0);
                     
-                    // 할당시간의 합이 기준시간과 일치하도록 조정
-                    if (assignedBlocks !== totalBlocks && assignedBlocks > 0 && totalBlocks > 0) {
+                    // 할당시간의 합이 기준시간을 초과하지 않도록 제한
+                    if (assignedBlocks > totalBlocks) {
+                        // 할당시간이 기준시간을 초과하면 비율로 조정
                         const ratio = totalBlocks / assignedBlocks;
                         taskGroup.할당.forEach(assignment => {
                             assignment.할당시간 = Math.round(assignment.할당시간 * ratio);
@@ -851,10 +1003,8 @@
                                 assignedBlocks = totalBlocks;
                             }
                         }
-                    } else if (assignedBlocks === 0 && totalBlocks > 0) {
-                        // 할당이 없으면 기준시간만큼 할당
-                        assignedBlocks = totalBlocks;
                     }
+                    // 할당시간이 기준시간보다 작으면 그대로 유지 (나머지는 미할당 블록으로 표시)
                     
                     // 사람별로 그룹화하고, 등록된 것과 안된 것을 적절히 섞기
                     const scheduledAssignments = [];
@@ -909,13 +1059,23 @@
                             t.소분류 === taskGroup.소분류
                         );
                         if (task && isTaskScheduled(task.id, assignment.이름)) {
-                            // 스케줄 정보 가져오기
-                            const schedule = schedules.find(s => 
+                            // 스케줄 정보 가져오기 (같은 taskId와 userName에 대한 모든 일정)
+                            const taskSchedules = schedules.filter(s => 
                                 s.taskId === task.id && 
                                 (s.userName === assignment.이름 || s.user === assignment.이름)
                             );
-                            if (schedule) {
-                                const actualScheduledBlocks = assignment.할당시간;
+                            
+                            // 모든 일정의 할당시간 합산 (실제 등록된 시간)
+                            const totalAssignedHours = taskSchedules.reduce((sum, s) => {
+                                return sum + (parseFloat(s.assignedHours) || 0);
+                            }, 0);
+                            
+                            if (taskSchedules.length > 0 && totalAssignedHours > 0) {
+                                // 실제 등록된 할당시간만큼만 블록 생성
+                                const actualScheduledBlocks = Math.round(totalAssignedHours);
+                                
+                                // 첫 번째 일정의 정보 사용 (여러 일정이 있으면 첫 번째 일정 기준)
+                                const schedule = taskSchedules[0];
                                 
                                 const startIndex = currentBlockIndex;
                                 const endIndex = currentBlockIndex + actualScheduledBlocks - 1;
@@ -927,14 +1087,23 @@
                                     endDate: schedule.endDate,
                                     startTime: schedule.startTime,
                                     endTime: schedule.endTime,
-                                    actualHours: assignment.할당시간,
-                                    assignedHours: assignment.할당시간,
+                                    actualHours: totalAssignedHours,
+                                    assignedHours: totalAssignedHours,
                                     assignedStartIndex: currentBlockIndex,
-                                    assignedEndIndex: currentBlockIndex + assignment.할당시간 - 1
+                                    assignedEndIndex: currentBlockIndex + actualScheduledBlocks - 1
                                 });
+                                
+                                // 할당시간만큼 인덱스 증가 (등록된 시간이 아니라 할당시간 전체)
+                                // 나머지는 미등록 할당 블록으로 표시됨
+                                currentBlockIndex += assignment.할당시간;
+                            } else {
+                                // 일정이 없거나 할당시간이 0이면 할당시간만큼 인덱스 증가 (미등록 블록으로 표시)
+                                currentBlockIndex += assignment.할당시간;
                             }
+                        } else {
+                            // 등록되지 않은 할당은 할당시간만큼 인덱스 증가
+                            currentBlockIndex += assignment.할당시간;
                         }
-                        currentBlockIndex += assignment.할당시간;
                     });
                     
                     // 실제 등록된 시간 계산 (시간 단위) - 할당 시간의 합
@@ -1037,7 +1206,15 @@
                     });
                     
                     // 2. 할당되었지만 미등록 블록들 (scheduled) - 중간
-                    let originalAssignedIndex = 0;
+                    // 등록된 블록의 인덱스 범위를 추적
+                    const registeredIndexSet = new Set();
+                    scheduledBlockInfo.forEach(info => {
+                        for (let idx = info.startIndex; idx <= info.endIndex; idx++) {
+                            registeredIndexSet.add(idx);
+                        }
+                    });
+                    
+                    let assignedBlockIndex = 0;
                     reorderedAssignments.forEach(assignment => {
                         const task = projectData.find(t => 
                             t.이름 === assignment.이름 &&
@@ -1047,20 +1224,47 @@
                         );
                         const isScheduled = task && isTaskScheduled(task.id, assignment.이름);
                         
-                        if (!isScheduled) {
-                            // 미등록 할당 블록
+                        if (isScheduled) {
+                            // 등록된 경우: 실제 등록된 할당시간 확인
+                            const taskSchedules = schedules.filter(s => 
+                                s.taskId === task.id && 
+                                (s.userName === assignment.이름 || s.user === assignment.이름)
+                            );
+                            const totalRegisteredHours = taskSchedules.reduce((sum, s) => {
+                                return sum + (parseFloat(s.assignedHours) || 0);
+                            }, 0);
+                            const registeredBlocks = Math.round(totalRegisteredHours);
+                            
+                            // 할당시간 중 등록되지 않은 부분만 미등록 블록으로 추가
+                            const unregisteredBlocks = assignment.할당시간 - registeredBlocks;
+                            if (unregisteredBlocks > 0) {
+                                // 등록된 블록 다음 인덱스부터 미등록 블록 추가
+                                for (let j = 0; j < unregisteredBlocks; j++) {
+                                    const originalIndex = assignedBlockIndex + registeredBlocks + j;
+                                    if (!registeredIndexSet.has(originalIndex)) {
+                                        blockArray.push({
+                                            originalIndex: originalIndex,
+                                            newIndex: newBlockIndex++,
+                                            type: 'scheduled',
+                                            assignment: assignment,
+                                            task: task
+                                        });
+                                    }
+                                }
+                            }
+                            assignedBlockIndex += assignment.할당시간;
+                        } else {
+                            // 미등록 할당 블록 (전체 할당시간만큼)
                             for (let j = 0; j < assignment.할당시간; j++) {
                                 blockArray.push({
-                                    originalIndex: originalAssignedIndex++,
+                                    originalIndex: assignedBlockIndex + j,
                                     newIndex: newBlockIndex++,
                                     type: 'scheduled',
                                     assignment: assignment,
-                                    task: task // task 정보 추가
+                                    task: task
                                 });
                             }
-                        } else {
-                            // 등록된 블록은 이미 추가되었으므로 원래 인덱스만 증가
-                            originalAssignedIndex += assignment.할당시간;
+                            assignedBlockIndex += assignment.할당시간;
                         }
                     });
                     
@@ -1210,14 +1414,46 @@
                                 <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
                                     <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
                                 </div>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 0.7rem; color: #93c5fd;">
+                                    💡 클릭하여 일정 등록
+                                </div>
                             `;
+                            // 미등록 블록에 클릭 가능 표시 및 클릭 이벤트 추가
+                            block.classList.add('clickable');
+                            block.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                const task = blockData.task || projectData.find(t => 
+                                    t.이름 === userName &&
+                                    t.대분류 === taskGroup.대분류 &&
+                                    t.중분류 === taskGroup.중분류 &&
+                                    t.소분류 === taskGroup.소분류
+                                );
+                                if (task) {
+                                    openScheduleModal(task, taskGroup, userName);
+                                }
+                            });
                         } else if (!isAssigned) {
                             tooltip.innerHTML = `
                                 <div style="font-weight: 600; margin-bottom: 4px;">미할당 (${newIndex + 1}/${totalBlocks})</div>
                                 <div style="margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);">
                                     <div>📊 기준시간: ${taskGroup.기준시간}시간</div>
                                 </div>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.3); font-size: 0.7rem; color: #93c5fd;">
+                                    💡 클릭하여 일정 등록
+                                </div>
                             `;
+                            // 미할당 블록에도 클릭 가능 표시 및 클릭 이벤트 추가
+                            block.classList.add('clickable');
+                            block.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                // 미할당 블록은 taskGroup 정보로 task 찾기
+                                const task = projectData.find(t => 
+                                    t.대분류 === taskGroup.대분류 &&
+                                    t.중분류 === taskGroup.중분류 &&
+                                    t.소분류 === taskGroup.소분류
+                                );
+                                openScheduleModal(task, taskGroup, userName || '');
+                            });
                         }
                         block.appendChild(tooltip);
                         
@@ -2097,6 +2333,265 @@
                 }
             }
         };
+    </script>
+
+    <!-- 일정 등록 모달 -->
+    <div class="schedule-modal" id="scheduleModal">
+        <div class="schedule-modal-content">
+            <div class="schedule-modal-header">
+                <h3>📅 테스크 일정 등록</h3>
+                <button class="schedule-modal-close" onclick="closeScheduleModal()">×</button>
+            </div>
+            <form id="scheduleForm" onsubmit="saveSchedule(event)">
+                <div class="schedule-form-group">
+                    <label>테스크 정보</label>
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 0.9rem;">
+                        <div><strong id="modalTaskName"></strong></div>
+                        <div style="margin-top: 4px; color: #64748b;" id="modalTaskDetails"></div>
+                    </div>
+                </div>
+                <div class="schedule-form-group">
+                    <label>담당자</label>
+                    <input type="text" id="modalUserName" readonly style="background: #f1f5f9;">
+                </div>
+                <div class="schedule-form-row">
+                    <div class="schedule-form-group">
+                        <label>시작 날짜</label>
+                        <input type="date" id="modalStartDate" required>
+                    </div>
+                    <div class="schedule-form-group">
+                        <label>종료 날짜</label>
+                        <input type="date" id="modalEndDate" required>
+                    </div>
+                </div>
+                <div class="schedule-form-row">
+                    <div class="schedule-form-group">
+                        <label>시작 시간</label>
+                        <input type="time" id="modalStartTime" value="09:00" required>
+                    </div>
+                    <div class="schedule-form-group">
+                        <label>종료 시간</label>
+                        <input type="time" id="modalEndTime" value="18:00" required>
+                    </div>
+                </div>
+                <div class="schedule-form-group">
+                    <label>할당 시간 (시간)</label>
+                    <input type="number" id="modalAssignedHours" step="0.5" min="0.5" required>
+                    <small style="color: #64748b; font-size: 0.85rem; margin-top: 4px; display: block;">
+                        시작 시간과 종료 시간에 따라 자동 계산됩니다.
+                    </small>
+                </div>
+                <div class="schedule-modal-actions">
+                    <button type="button" class="schedule-btn schedule-btn-secondary" onclick="closeScheduleModal()">취소</button>
+                    <button type="submit" class="schedule-btn schedule-btn-primary">등록</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 현재 편집 중인 테스크 정보
+        let currentEditingTask = null;
+        let currentEditingTaskGroup = null;
+        let currentEditingUserName = '';
+
+        // 일정 등록 모달 열기
+        function openScheduleModal(task, taskGroup, userName) {
+            currentEditingTask = task;
+            currentEditingTaskGroup = taskGroup;
+            currentEditingUserName = userName;
+
+            const modal = document.getElementById('scheduleModal');
+            const modalTaskName = document.getElementById('modalTaskName');
+            const modalTaskDetails = document.getElementById('modalTaskDetails');
+            const modalUserName = document.getElementById('modalUserName');
+            const modalStartDate = document.getElementById('modalStartDate');
+            const modalEndDate = document.getElementById('modalEndDate');
+            const modalStartTime = document.getElementById('modalStartTime');
+            const modalEndTime = document.getElementById('modalEndTime');
+            const modalAssignedHours = document.getElementById('modalAssignedHours');
+
+            // 테스크 정보 표시
+            if (task) {
+                modalTaskName.textContent = task.소분류 || task.중분류 || '테스크';
+                modalTaskDetails.innerHTML = `
+                    <div>대분류: ${task.대분류 || ''}</div>
+                    <div>중분류: ${task.중분류 || ''}</div>
+                    <div>기준시간: ${task.기준시간 || taskGroup.기준시간 || 0}시간</div>
+                `;
+            } else {
+                modalTaskName.textContent = taskGroup.소분류 || taskGroup.중분류 || '테스크';
+                modalTaskDetails.innerHTML = `
+                    <div>대분류: ${taskGroup.대분류 || ''}</div>
+                    <div>중분류: ${taskGroup.중분류 || ''}</div>
+                    <div>기준시간: ${taskGroup.기준시간 || 0}시간</div>
+                `;
+            }
+
+            // 담당자 표시
+            if (userName) {
+                modalUserName.value = userName;
+            } else if (task && task.이름) {
+                modalUserName.value = task.이름;
+            } else {
+                // 현재 로그인한 사용자
+                const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+                modalUserName.value = currentUser ? currentUser.name : '';
+            }
+
+            // 오늘 날짜를 기본값으로 설정
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            modalStartDate.value = todayStr;
+            modalEndDate.value = todayStr;
+
+            // 시간 자동 계산 이벤트
+            modalStartTime.addEventListener('change', calculateHours);
+            modalEndTime.addEventListener('change', calculateHours);
+            modalStartDate.addEventListener('change', calculateHours);
+            modalEndDate.addEventListener('change', calculateHours);
+
+            // 모달 표시
+            modal.classList.add('active');
+        }
+
+        // 시간 자동 계산
+        function calculateHours() {
+            const startDate = document.getElementById('modalStartDate').value;
+            const endDate = document.getElementById('modalEndDate').value;
+            const startTime = document.getElementById('modalStartTime').value;
+            const endTime = document.getElementById('modalEndTime').value;
+            const assignedHoursInput = document.getElementById('modalAssignedHours');
+
+            if (startDate && endDate && startTime && endTime) {
+                const start = new Date(`${startDate}T${startTime}`);
+                const end = new Date(`${endDate}T${endTime}`);
+                const hours = (end - start) / (1000 * 60 * 60);
+                
+                if (hours > 0) {
+                    assignedHoursInput.value = Math.round(hours * 2) / 2; // 0.5 단위로 반올림
+                }
+            }
+        }
+
+        // 일정 등록 모달 닫기
+        function closeScheduleModal() {
+            const modal = document.getElementById('scheduleModal');
+            modal.classList.remove('active');
+            currentEditingTask = null;
+            currentEditingTaskGroup = null;
+            currentEditingUserName = '';
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('scheduleModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeScheduleModal();
+            }
+        });
+
+        // 일정 저장
+        function saveSchedule(event) {
+            event.preventDefault();
+
+            const startDate = document.getElementById('modalStartDate').value;
+            const endDate = document.getElementById('modalEndDate').value;
+            const startTime = document.getElementById('modalStartTime').value;
+            const endTime = document.getElementById('modalEndTime').value;
+            const assignedHours = parseFloat(document.getElementById('modalAssignedHours').value);
+
+            if (!currentEditingTask && !currentEditingTaskGroup) {
+                alert('테스크 정보를 찾을 수 없습니다.');
+                return;
+            }
+
+            // 사용자 매핑 (이름 -> user ID)
+            const userMapping = {};
+            if (typeof USERS_DATA !== 'undefined') {
+                USERS_DATA.users.forEach(user => {
+                    userMapping[user.name] = user.id;
+                });
+            }
+
+            const userName = currentEditingUserName || 
+                           (currentEditingTask && currentEditingTask.이름) || 
+                           (JSON.parse(sessionStorage.getItem('currentUser'))?.name || '');
+            const userId = userMapping[userName] || userName;
+
+            // taskId 찾기
+            let taskId = '';
+            if (currentEditingTask && currentEditingTask.id) {
+                taskId = currentEditingTask.id;
+            } else if (currentEditingTaskGroup) {
+                // projectData에서 찾기
+                const projectName = getUrlParameter('project');
+                const allProjectData = typeof PROJECTS_DATA !== 'undefined' ? PROJECTS_DATA.tasks : [];
+                const task = allProjectData.find(t => 
+                    t.이름 === userName &&
+                    t.대분류 === currentEditingTaskGroup.대분류 &&
+                    t.중분류 === currentEditingTaskGroup.중분류 &&
+                    t.소분류 === currentEditingTaskGroup.소분류 &&
+                    (!projectName || t.사업명 === projectName)
+                );
+                if (task) {
+                    taskId = task.id;
+                }
+            }
+
+            if (!taskId) {
+                alert('테스크 ID를 찾을 수 없습니다.');
+                return;
+            }
+
+            // 일정 데이터 생성 (entire_calendar.html 형식과 동일)
+            const schedule = {
+                taskId: taskId,
+                userName: userName,
+                user: userId,
+                startDate: startDate,
+                endDate: endDate,
+                startTime: startTime,
+                endTime: endTime,
+                assignedHours: assignedHours,
+                task: {
+                    소분류: (currentEditingTask && currentEditingTask.소분류) || (currentEditingTaskGroup && currentEditingTaskGroup.소분류) || '',
+                    중분류: (currentEditingTask && currentEditingTask.중분류) || (currentEditingTaskGroup && currentEditingTaskGroup.중분류) || '',
+                    대분류: (currentEditingTask && currentEditingTask.대분류) || (currentEditingTaskGroup && currentEditingTaskGroup.대분류) || '',
+                    할당시간: assignedHours,
+                    기준시간: (currentEditingTask && currentEditingTask.기준시간) || (currentEditingTaskGroup && currentEditingTaskGroup.기준시간) || 0,
+                    비고: (currentEditingTask && currentEditingTask.비고) || '',
+                    projectId: (currentEditingTask && currentEditingTask.projectId) || (currentEditingTaskGroup && currentEditingTaskGroup.projectId) || 'project-unknown',
+                    사업명: (currentEditingTask && currentEditingTask.사업명) || (currentEditingTaskGroup && currentEditingTaskGroup.사업명) || ''
+                }
+            };
+
+            // localStorage에 저장
+            const saved = localStorage.getItem('projectSchedules');
+            let scheduleData = {
+                schedules: [],
+                lastUpdated: new Date().toISOString()
+            };
+
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    scheduleData.schedules = data.schedules || [];
+                } catch (e) {
+                    console.warn('기존 일정 파싱 오류:', e);
+                }
+            }
+
+            // 새 일정 추가
+            scheduleData.schedules.push(schedule);
+            localStorage.setItem('projectSchedules', JSON.stringify(scheduleData));
+
+            // 모달 닫기
+            closeScheduleModal();
+
+            // 페이지 새로고침 또는 데이터 재로드
+            alert(`일정이 등록되었습니다! (${assignedHours}시간)`);
+            location.reload();
+        }
     </script>
 </body>
 </html>
