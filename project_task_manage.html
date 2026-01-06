@@ -631,6 +631,42 @@
             margin-top: 6px;
         }
 
+        .member-task-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            align-items: center;
+        }
+
+        .attach-file-btn-small {
+            background: var(--primary-blue);
+            border: none;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 10px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .attach-file-btn-small:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+        }
+
+        .attach-file-btn-small:active {
+            transform: translateY(0);
+        }
+
+        .attach-file-input-small {
+            display: none;
+        }
+
         .category-tag {
             padding: 2px 8px;
             border-radius: 4px;
@@ -1601,6 +1637,16 @@
                         : '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">⏰ 미등록</span>';
                     
                     const taskKey = `${task.id}-${task.이름}`;
+                    const isMyTask = task.이름 === loggedInUser.name;
+                    const attachButtonHTML = isMyTask ? `
+                        <div class="member-task-actions">
+                            <button class="attach-file-btn-small" onclick="handleTaskFileAttach(event, '${task.id}', '${task.이름}')">
+                                📎 첨부파일
+                            </button>
+                            <input type="file" class="attach-file-input-small" data-task-id="${task.id}" data-user-name="${task.이름}" multiple accept="*/*" onchange="handleTaskFileSelect(event, '${task.id}', '${task.이름}')">
+                        </div>
+                    ` : '';
+                    
                     taskListHTML += `
                         <div class="member-task-item" ${scheduledClass} data-task-id="${task.id}" data-user-name="${task.이름}" data-task-key="${taskKey}">
                             <div class="member-task-item-header">
@@ -1616,6 +1662,7 @@
                                 <span class="category-tag tertiary">${task.소분류}</span>
                             </div>
                             ${task.비고 ? `<div style="margin-top: 6px; font-size: 0.75rem; color: #64748b;">📝 ${task.비고}</div>` : ''}
+                            ${attachButtonHTML}
                         </div>
                     `;
                 });
@@ -1915,6 +1962,16 @@
                         : '<span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-left: 8px;">⏰ 미등록</span>';
                     
                     const taskKey = task ? `${task.id}-${assignment.이름}` : null;
+                    const isMyTask = assignment.이름 === loggedInUser.name;
+                    const attachButtonHTML = isMyTask && task ? `
+                        <div class="member-task-actions">
+                            <button class="attach-file-btn-small" onclick="handleTaskFileAttach(event, '${task.id}', '${assignment.이름}')">
+                                📎 첨부파일
+                            </button>
+                            <input type="file" class="attach-file-input-small" data-task-id="${task.id}" data-user-name="${assignment.이름}" multiple accept="*/*" onchange="handleTaskFileSelect(event, '${task.id}', '${assignment.이름}')">
+                        </div>
+                    ` : '';
+                    
                     memberListHTML += `
                         <div class="member-task-item" ${scheduledClass} ${task ? `data-task-id="${task.id}" data-user-name="${assignment.이름}" data-task-key="${taskKey}"` : ''}>
                             <div class="member-task-item-header">
@@ -1927,6 +1984,7 @@
                                 ${assignment.소속} ${assignment.부서 ? `· ${assignment.부서}` : ''}
                             </div>
                             ${assignment.비고 ? `<div style="margin-top: 6px; font-size: 0.75rem; color: #64748b;">📝 ${assignment.비고}</div>` : ''}
+                            ${attachButtonHTML}
                         </div>
                     `;
                 });
@@ -2591,6 +2649,70 @@
             // 페이지 새로고침 또는 데이터 재로드
             alert(`일정이 등록되었습니다! (${assignedHours}시간)`);
             location.reload();
+        }
+
+        // 테스크 리스트에서 첨부파일 버튼 클릭 처리
+        function handleTaskFileAttach(event, taskId, userName) {
+            event.stopPropagation();
+            const fileInput = document.querySelector(`.attach-file-input-small[data-task-id="${taskId}"][data-user-name="${userName}"]`);
+            if (fileInput) {
+                fileInput.click();
+            }
+        }
+
+        // 테스크 리스트에서 파일 선택 처리
+        function handleTaskFileSelect(event, taskId, userName) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            // 파일 정보 수집
+            const fileList = Array.from(files).map(file => ({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                lastModified: file.lastModified
+            }));
+
+            // localStorage에 첨부파일 정보 저장
+            const saved = localStorage.getItem('projectSchedules');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    const schedules = data.schedules || [];
+                    
+                    // 해당 테스크와 사용자의 모든 일정 찾기
+                    const relatedSchedules = schedules.filter(s => 
+                        s.taskId === taskId && 
+                        (s.userName === userName || s.user === userName)
+                    );
+
+                    if (relatedSchedules.length > 0) {
+                        // 각 일정에 첨부파일 추가
+                        relatedSchedules.forEach(schedule => {
+                            if (!schedule.attachments) {
+                                schedule.attachments = [];
+                            }
+                            schedule.attachments.push(...fileList);
+                        });
+                        
+                        // localStorage 업데이트
+                        data.schedules = schedules;
+                        localStorage.setItem('projectSchedules', JSON.stringify(data));
+                        
+                        alert(`${files.length}개의 파일이 첨부되었습니다.`);
+                        
+                        // 파일 입력 초기화
+                        event.target.value = '';
+                    } else {
+                        alert('등록된 일정이 없습니다. 먼저 일정을 등록해주세요.');
+                    }
+                } catch (e) {
+                    console.error('첨부파일 저장 오류:', e);
+                    alert('첨부파일 저장 중 오류가 발생했습니다.');
+                }
+            } else {
+                alert('등록된 일정이 없습니다. 먼저 일정을 등록해주세요.');
+            }
         }
     </script>
 </body>
