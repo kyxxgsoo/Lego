@@ -402,10 +402,17 @@
             white-space: normal;
         }
 
-        .close-detail-btn {
+        .detail-panel-header {
             position: absolute;
             top: 20px;
             right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .close-detail-btn {
             background: #f1f5f9;
             border: none;
             font-size: 1.5rem;
@@ -425,6 +432,35 @@
         .close-detail-btn:hover {
             background: #e2e8f0;
             color: var(--text-dark);
+        }
+
+        .attach-file-btn {
+            background: var(--primary-blue);
+            border: none;
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .attach-file-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+
+        .attach-file-btn:active {
+            transform: translateY(0);
+        }
+
+        .attach-file-input {
+            display: none;
         }
 
         /* --- Calendar Styles --- */
@@ -878,7 +914,13 @@
         
         <!-- 상세정보 패널 -->
         <div class="detail-panel" id="detail-panel" onclick="event.stopPropagation()">
-            <button class="close-detail-btn" onclick="closeDetailPanel()">×</button>
+            <div class="detail-panel-header">
+                <button class="attach-file-btn" onclick="document.getElementById('attach-file-input').click()">
+                    📎 첨부파일 추가
+                </button>
+                <input type="file" id="attach-file-input" class="attach-file-input" multiple accept="*/*" onchange="handleFileAttach(event)">
+                <button class="close-detail-btn" onclick="closeDetailPanel()">×</button>
+            </div>
             <div class="detail-project-title" id="detail-project-title">-</div>
             <div class="detail-section">
                 <div class="detail-section-title">📌 테스크 정보</div>
@@ -1607,6 +1649,64 @@
                     task.style.zIndex = '1';
                 }
             });
+        }
+
+        // 첨부파일 추가 처리
+        function handleFileAttach(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            if (!selectedSchedule) {
+                alert('일정을 선택해주세요.');
+                return;
+            }
+
+            // 파일 정보 수집
+            const fileList = Array.from(files).map(file => ({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                lastModified: file.lastModified
+            }));
+
+            // localStorage에 첨부파일 정보 저장
+            const saved = localStorage.getItem('projectSchedules');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    const schedules = data.schedules || [];
+                    
+                    // 현재 선택된 일정 찾기
+                    const scheduleIndex = schedules.findIndex(s => 
+                        s.taskId === selectedSchedule.taskId &&
+                        (s.userName === selectedSchedule.userName || s.user === selectedSchedule.user) &&
+                        s.startDate === selectedSchedule.startDate &&
+                        s.startTime === selectedSchedule.startTime
+                    );
+
+                    if (scheduleIndex !== -1) {
+                        // 기존 첨부파일이 있으면 추가, 없으면 새로 생성
+                        if (!schedules[scheduleIndex].attachments) {
+                            schedules[scheduleIndex].attachments = [];
+                        }
+                        schedules[scheduleIndex].attachments.push(...fileList);
+                        
+                        // localStorage 업데이트
+                        data.schedules = schedules;
+                        localStorage.setItem('projectSchedules', JSON.stringify(data));
+                        
+                        alert(`${files.length}개의 파일이 첨부되었습니다.`);
+                        
+                        // 파일 입력 초기화
+                        event.target.value = '';
+                    } else {
+                        alert('일정을 찾을 수 없습니다.');
+                    }
+                } catch (e) {
+                    console.error('첨부파일 저장 오류:', e);
+                    alert('첨부파일 저장 중 오류가 발생했습니다.');
+                }
+            }
         }
 
         // 네비게이션
